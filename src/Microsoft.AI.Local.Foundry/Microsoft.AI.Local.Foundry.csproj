@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(PortableTargetFramework)</TargetFramework>
+    <RootNamespace>Microsoft.AI.Local.Foundry</RootNamespace>
+    <Description>Foundry Local provider for Microsoft.AI.Local: every Foundry Local catalog model (Phi, Qwen, Whisper, embeddings, ...) as a strongly typed handle (FoundryModels.Phi4Mini) behind the shared acquisition and Microsoft.Extensions.AI contracts. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
+    <NoWarn>$(NoWarn);MEAI001;MSAILOCAL001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local\Microsoft.AI.Local.csproj" />
+    <ProjectReference Include="..\Microsoft.AI.Local.Foundry.Generators\Microsoft.AI.Local.Foundry.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AI.Foundry.Local" />
+    <!--
+      Foundry Local's runtime package forces a RuntimeIdentifier from buildTransitive targets, which a
+      RID-agnostic library cannot satisfy. Opt this project out; consuming apps still receive the
+      package (and its native-binary copy targets) transitively through Microsoft.AI.Foundry.Local.
+    -->
+    <PackageReference Include="Microsoft.AI.Foundry.Local.Runtime" ExcludeAssets="build;buildTransitive" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The catalog manifest drives the generated FoundryModels handles (see eng/catalog/README.md). -->
+    <AdditionalFiles Include="$(RepoRoot)eng/catalog/foundry-models.json" Link="foundry-models.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Foundry.Tests" />
+  </ItemGroup>
+
+</Project>
