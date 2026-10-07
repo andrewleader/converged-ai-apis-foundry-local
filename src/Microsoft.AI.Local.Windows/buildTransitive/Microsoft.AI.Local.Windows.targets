@@ -22,6 +22,20 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <!-- Inputs for the Microsoft.AI.Local analyzers (MSAILOCAL101-103): target framework, output type and package manifest. -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="OutputType;TargetFramework;TargetPlatformIdentifier" />
+  </ItemGroup>
+
+  <Target Name="_WindowsAIAddPackageManifestToAnalyzers" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_WindowsAIPackageManifest Include="@(AppxManifest)" />
+      <_WindowsAIPackageManifest Include="$(MSBuildProjectDirectory)\Package.appxmanifest"
+                                 Condition="'@(AppxManifest)' == '' and Exists('$(MSBuildProjectDirectory)\Package.appxmanifest')" />
+      <AdditionalFiles Include="@(_WindowsAIPackageManifest->'%(FullPath)')" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="_WindowsAIValidateLimitedAccessFeature" BeforeTargets="CoreCompile" Condition="'$(_WindowsAILafApplies)' == 'true'">
     <Warning Code="MSAILOCAL100"
              Condition="'$(WindowsAILimitedAccessFeatureToken)' != '' and '$(WindowsAILimitedAccessFeatureAttestation)' == ''"

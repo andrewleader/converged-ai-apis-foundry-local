@@ -22,6 +22,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.AI.Local\Microsoft.AI.Local.csproj" />
+    <!-- Build-time checks (MSAILOCAL101-103) ship in this package's analyzers folder. -->
+    <ProjectReference Include="..\Microsoft.AI.Local.Analyzers\Microsoft.AI.Local.Analyzers.csproj"
+                      ReferenceOutputAssembly="false" PrivateAssets="all" SetTargetFramework="TargetFramework=netstandard2.0" />
+    <None Include="..\Microsoft.AI.Local.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.AI.Local.Analyzers.dll"
+          Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
