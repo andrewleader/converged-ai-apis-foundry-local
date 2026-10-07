@@ -18,14 +18,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
-  <!-- Windows-only fast paths (SoftwareBitmap, WIC decoding) are compiled only for the Windows target framework. -->
-  <ItemGroup Condition="'$(TargetPlatformIdentifier)' != 'windows'">
-    <Compile Remove="**/*.Windows.cs" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
-    <Compile Remove="**/*.Portable.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
   </ItemGroup>

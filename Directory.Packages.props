@@ -7,6 +7,8 @@
 
   <ItemGroup Label="Provider SDKs">
     <PackageVersion Include="Microsoft.WindowsAppSDK.AI" Version="2.5.5" />
+    <!-- Microsoft.WindowsAppSDK.Foundation 2.3.12 depends on InteractiveExperiences >= 2.1.8, which was never published (NU1603). -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
     <PackageVersion Include="Microsoft.AI.Foundry.Local" Version="2.1.0" />
   </ItemGroup>
 

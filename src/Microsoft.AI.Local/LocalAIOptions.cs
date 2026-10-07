@@ -15,7 +15,7 @@ public sealed class LocalAIOptions
     /// Gets or sets a value indicating whether requests that set an option the provider can't honor
     /// (for example <c>ChatOptions.StopSequences</c> on a provider without stop sequences) throw
     /// <see cref="LocalModelOptionNotSupportedException"/>. The default is <see langword="false"/>: the option is
-    /// ignored and a warning is logged.
+    /// ignored and logged at Debug level.
     /// </summary>
     public bool ThrowOnUnsupportedOptions { get; set; }
 

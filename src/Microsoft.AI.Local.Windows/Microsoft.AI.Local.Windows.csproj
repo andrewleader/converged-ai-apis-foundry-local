@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
+    <RootNamespace>Microsoft.AI.Local.Windows</RootNamespace>
+    <Description>Windows inbox AI provider for Microsoft.AI.Local: Phi Silica, text skills and imaging models (OCR, image description, super-resolution, segmentation, object removal) delivered and serviced by Windows on Copilot+ PCs. Built on Microsoft.WindowsAppSDK.AI; the net8.0 build is a stub that reports NotSupportedOnPlatform so cross-platform code needs no #if.</Description>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- Class library without resources: no PRI file. -->
+    <AppxGeneratePriEnabled>false</AppxGeneratePriEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local\Microsoft.AI.Local.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" />
+    <!-- Lifts an unresolvable lower bound in the WinAppSDK graph (see Directory.Packages.props). Already part of the closure. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+  </ItemGroup>
+
+</Project>

@@ -35,4 +35,4 @@ public interface IImageScalingModel : ILocalModel<IImageScaler>;
 public interface IImageSegmentationModel : ILocalModel<IImageSegmenter>;
 
 /// <summary>A local model that removes objects from images.</summary>
-public interface IImageObjectRemovalModel : ILocalModel<IImageObjectRemover>;
+public interface IObjectRemovalModel : ILocalModel<IImageObjectRemover>;

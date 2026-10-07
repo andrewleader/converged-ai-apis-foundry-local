@@ -313,6 +313,6 @@ internal static partial class Log
     [LoggerMessage(4, LogLevel.Debug, "All callers cancelled; cancelling acquisition of local model '{ModelId}'.")]
     public static partial void CancellingAcquisition(ILogger logger, string modelId);
 
-    [LoggerMessage(5, LogLevel.Warning, "{Provider} ignores the unsupported option '{OptionName}'. Set LocalAIOptions.Default.ThrowOnUnsupportedOptions to throw instead.")]
+    [LoggerMessage(5, LogLevel.Debug, "{Provider} ignores the unsupported option '{OptionName}'. Set LocalAIOptions.Default.ThrowOnUnsupportedOptions to throw instead.")]
     public static partial void UnsupportedOptionIgnored(ILogger logger, string provider, string optionName);
 }

@@ -9,7 +9,7 @@ public static class LocalAIProviderHelpers
 {
     /// <summary>
     /// Handles a request option the provider can't honor: throws <see cref="LocalModelOptionNotSupportedException"/>
-    /// if <see cref="LocalAIOptions.ThrowOnUnsupportedOptions"/> is enabled; otherwise logs a warning.
+    /// if <see cref="LocalAIOptions.ThrowOnUnsupportedOptions"/> is enabled; otherwise logs at Debug level.
     /// </summary>
     /// <param name="providerName">The name of the provider.</param>
     /// <param name="optionName">The name of the option, for example <c>ChatOptions.StopSequences</c>.</param>

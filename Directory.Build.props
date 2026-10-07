@@ -36,6 +36,11 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- WinAppSDK's MRT/PRI tooling runs makepri.exe, which exists only on Windows. Our libraries have no PRI resources. -->
+  <PropertyGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
+    <EnableCoreMrtTooling>false</EnableCoreMrtTooling>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' or '$(TF_BUILD)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>

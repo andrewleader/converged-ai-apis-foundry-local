@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Platform-specific source files: *.Windows.cs compile only for Windows target frameworks, *.Portable.cs only for
+    the others. This keeps #if out of the code.
+  -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' != 'windows'">
+    <Compile Remove="**/*.Windows.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <Compile Remove="**/*.Portable.cs" />
+  </ItemGroup>
+</Project>
