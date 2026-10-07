@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Microsoft.AI.Local.Analyzers/Microsoft.AI.Local.Analyzers.csproj" />
+    <Project Path="src/Microsoft.AI.Local.Foundry.Generators/Microsoft.AI.Local.Foundry.Generators.csproj" />
+    <Project Path="src/Microsoft.AI.Local.Foundry/Microsoft.AI.Local.Foundry.csproj" />
+    <Project Path="src/Microsoft.AI.Local.Windows/Microsoft.AI.Local.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local/Microsoft.AI.Local.csproj" />
+  </Folder>
+</Solution>

@@ -13,16 +13,20 @@
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AI.Foundry.Local" />
     <!--
-      Foundry Local's runtime package forces a RuntimeIdentifier from buildTransitive targets, which a
-      RID-agnostic library cannot satisfy. Opt this project out; consuming apps still receive the
-      package (and its native-binary copy targets) transitively through Microsoft.AI.Foundry.Local.
+      Foundry Local's runtime package forces a RuntimeIdentifier from its buildTransitive targets, which this
+      RID-agnostic library can't satisfy. Opt this project out; apps get the package transitively, and
+      buildTransitive/Microsoft.AI.Local.Foundry.targets keeps RID-less app builds working.
     -->
-    <PackageReference Include="Microsoft.AI.Foundry.Local.Runtime" ExcludeAssets="build;buildTransitive" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AI.Foundry.Local.Runtime" ExcludeAssets="buildTransitive" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- The catalog manifest drives the generated FoundryModels handles (see eng/catalog/README.md). -->
     <AdditionalFiles Include="$(RepoRoot)eng/catalog/foundry-models.json" Link="foundry-models.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
