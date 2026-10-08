@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Microsoft.AI.Local/Microsoft.AI.Local.csproj" />
     <Project Path="src/Microsoft.AI.Local.Analyzers/Microsoft.AI.Local.Analyzers.csproj" />
+    <Project Path="src/Microsoft.AI.Local.Audio/Microsoft.AI.Local.Audio.csproj" />
     <Project Path="src/Microsoft.AI.Local.Catalog.Generators/Microsoft.AI.Local.Catalog.Generators.csproj" />
   </Folder>
   <Folder Name="/src/providers/">
@@ -16,6 +17,7 @@
     <Project Path="src/Microsoft.AI.Local.TextEmbedding.Foundry/Microsoft.AI.Local.TextEmbedding.Foundry.csproj" />
     <Project Path="src/Microsoft.AI.Local.SpeechToText/Microsoft.AI.Local.SpeechToText.csproj" />
     <Project Path="src/Microsoft.AI.Local.SpeechToText.Foundry/Microsoft.AI.Local.SpeechToText.Foundry.csproj" />
+    <Project Path="src/Microsoft.AI.Local.SpeechToText.Windows/Microsoft.AI.Local.SpeechToText.Windows.csproj" />
     <Project Path="src/Microsoft.AI.Local.TextSummarization/Microsoft.AI.Local.TextSummarization.csproj" />
     <Project Path="src/Microsoft.AI.Local.TextSummarization.Windows/Microsoft.AI.Local.TextSummarization.Windows.csproj" />
     <Project Path="src/Microsoft.AI.Local.TextRewrite/Microsoft.AI.Local.TextRewrite.csproj" />

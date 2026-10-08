@@ -55,6 +55,23 @@ public class ModelCatalogTests
     }
 
     [Fact]
+    public async Task SpeechModelsFromEveryProviderShareOneCatalog()
+    {
+        var windows = SpeechToTextModels.WindowsDefault;
+        Assert.Equal("windows/speech-recognition", windows.Id);
+        Assert.Equal("Windows", windows.ProviderName);
+        Assert.Same(windows, LocalModelCatalog.Resolve(windows));
+        Assert.True(windows.Capabilities.SupportsAudioInput);
+        Assert.Equal(
+            ModelAvailabilityStatus.NotSupportedOnPlatform,
+            (await windows.GetAvailabilityAsync(TestContext.Current.CancellationToken)).Status);
+
+        var ids = SpeechToTextModels.All.Select(m => m.Id).ToList();
+        Assert.Contains("windows/speech-recognition", ids);
+        Assert.Contains("foundry/whisper-tiny", ids);
+    }
+
+    [Fact]
     public async Task HandleWithoutProviderPackageReportsMissingAppRequirement()
     {
 #pragma warning disable MSAILOCAL201 // Intentionally used without its provider package.

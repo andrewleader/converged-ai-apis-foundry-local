@@ -20,8 +20,6 @@
 
   <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
     <PackageReference Include="Microsoft.WindowsAppSDK.AI" />
-    <!-- Lifts an unresolvable lower bound in the WinAppSDK graph (see Directory.Packages.props). Already part of the closure. -->
-    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
   </ItemGroup>
 
 </Project>

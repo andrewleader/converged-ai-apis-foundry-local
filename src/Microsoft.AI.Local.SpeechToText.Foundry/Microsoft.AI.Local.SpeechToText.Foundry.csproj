@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The Foundry Local speech to text models for Microsoft.AI.Local.SpeechToText: every Foundry Local catalog model of this task, downloaded on first use and run in-process. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
+    <Description>The Foundry Local speech to text models for Microsoft.AI.Local.SpeechToText: every Foundry Local catalog model of this task, downloaded on first use and run in-process. Accepts files, headerless PCM and live audio (for example Microsoft.AI.Local.Audio's microphone capture), transcribing live audio as it arrives. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local.Audio\Microsoft.AI.Local.Audio.csproj" />
+  </ItemGroup>
 
 </Project>

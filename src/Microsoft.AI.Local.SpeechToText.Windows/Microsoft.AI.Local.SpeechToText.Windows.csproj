@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The Windows inbox speech recognition model for Microsoft.AI.Local.SpeechToText (SpeechToTextModels.WindowsDefault): on-device batch and live transcription delivered and serviced by Windows (Windows AI APIs, no ONNX Runtime in the app). Uses the experimental Windows App SDK. Works with any audio source, including Microsoft.AI.Local.Audio's microphone capture. The net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local.Audio\Microsoft.AI.Local.Audio.csproj" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.AI.Speech ships only in the experimental Windows App SDK AI package. Only this package moves to the
+    experimental channel; the other Windows packages keep a stable minimum that is lower than it, so NuGet resolves the
+    experimental build in apps that use speech (see Directory.Packages.props).
+  -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" VersionOverride="$(MicrosoftWindowsAppSDKAIExperimentalVersion)" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- CS8305: the Windows speech APIs are [Experimental]. This package wraps them on purpose; apps opt in through
+         SpeechToTextModels, which is [Experimental("MSAILOCAL001")]. -->
+    <NoWarn>$(NoWarn);CS8305</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

@@ -23,7 +23,7 @@ Each task type has its own package, which versions independently, and each provi
 |---|---|---|---|
 | `Microsoft.AI.Local.TextGeneration` | `LanguageModels` | `.TextGeneration.Windows` | `.TextGeneration.Foundry` |
 | `Microsoft.AI.Local.TextEmbedding` | `TextEmbeddingModels` | | `.TextEmbedding.Foundry` |
-| `Microsoft.AI.Local.SpeechToText` | `SpeechToTextModels` | | `.SpeechToText.Foundry` |
+| `Microsoft.AI.Local.SpeechToText` | `SpeechToTextModels` | `.SpeechToText.Windows` (experimental) | `.SpeechToText.Foundry` |
 | `Microsoft.AI.Local.TextSummarization` | `TextSummarizationModels` | `.TextSummarization.Windows` | |
 | `Microsoft.AI.Local.TextRewrite` | `TextRewriteModels` | `.TextRewrite.Windows` | |
 | `Microsoft.AI.Local.TextToTable` | `TextToTableModels` | `.TextToTable.Windows` | |
@@ -33,7 +33,7 @@ Each task type has its own package, which versions independently, and each provi
 | `Microsoft.AI.Local.ImageSegmentation` | `ImageSegmentationModels` | `.ImageSegmentation.Windows` | |
 | `Microsoft.AI.Local.ImageObjectRemoval` | `ImageObjectRemovalModels` | `.ImageObjectRemoval.Windows` | |
 
-They build on `Microsoft.AI.Local` (the core) and the provider infrastructure packages `Microsoft.AI.Local.Windows` and `Microsoft.AI.Local.Foundry`, which contain no models.
+They build on `Microsoft.AI.Local` (the core) and the provider infrastructure packages `Microsoft.AI.Local.Windows` and `Microsoft.AI.Local.Foundry`, which contain no models. `Microsoft.AI.Local.Audio` provides audio sources for speech models: microphone capture (Windows) and live audio streams that every speech model accepts.
 
 Every catalog class lists every provider's models of its task. Using a handle whose provider package the app doesn't reference is a build warning (`MSAILOCAL201`, with the package to add) and reports `MissingAppRequirement` at run time.
 
@@ -47,7 +47,7 @@ Run the repository-root packaging script:
 .\pack.ps1
 ```
 
-It builds every packable project in `Release` and writes all 26 packages and their symbols to `artifacts\packages`. The analyzer project ships inside `Microsoft.AI.Local`; the catalog generator is build-only and isn't shipped.
+It builds every packable project in `Release` and writes all 28 packages and their symbols to `artifacts\packages`. The analyzer project ships inside `Microsoft.AI.Local`; the catalog generator is build-only and isn't shipped.
 
 To use the packages in another app, point `dotnet add package` at that directory and add the provider packages of the models you use:
 

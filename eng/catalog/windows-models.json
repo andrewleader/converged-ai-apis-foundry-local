@@ -20,6 +20,19 @@
       }
     },
     {
+      "alias": "speech-recognition",
+      "property": "WindowsDefault",
+      "displayName": "Speech recognition",
+      "publisher": "Microsoft",
+      "description": "The on-device speech recognizer built into Windows: transcribes files and live audio (for example a microphone) with partial results while the speaker talks. Uses the experimental Windows App SDK.",
+      "task": "speech-to-text",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "streaming": true,
+        "audioInput": true
+      }
+    },
+    {
       "alias": "text-summarization",
       "property": "PhiSilica",
       "displayName": "Text summarization (Phi Silica)",
