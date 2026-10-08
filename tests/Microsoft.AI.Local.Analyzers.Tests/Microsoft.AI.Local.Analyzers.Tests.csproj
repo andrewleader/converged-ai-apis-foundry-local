@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <!-- These tests load the analyzers and generators as libraries rather than running them on this project. -->
+    <MicrosoftAILocalUseAnalyzers>false</MicrosoftAILocalUseAnalyzers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.Analyzers/Microsoft.AI.Local.Analyzers.csproj" />
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.Catalog.Generators/Microsoft.AI.Local.Catalog.Generators.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(RepoRoot)eng/catalog/*-models.json" LinkBase="catalog" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

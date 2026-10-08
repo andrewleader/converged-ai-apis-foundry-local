@@ -1,0 +1,19 @@
+<Project>
+  <!--
+    Foundry Local's runtime package defaults RuntimeIdentifier to the build machine's RID from its buildTransitive
+    targets. Restore never sees that value, so a RID-less app fails with NETSDK1047 ("assets file doesn't have a
+    target for 'net8.0/<rid>'"). The Foundry Local SDK also loads its native library from runtimes/<rid>/native, which
+    RID-less builds already produce, so the default isn't needed.
+
+    Undo it, but only when restore didn't produce assets for that RID (i.e. the build would fail anyway). Apps that
+    set a RuntimeIdentifier themselves, or build with -r, keep it.
+  -->
+  <PropertyGroup Condition="'$(MicrosoftAILocalFoundryKeepImplicitRuntimeIdentifier)' != 'true'
+                            and '$(RuntimeIdentifier)' != ''
+                            and '$(RuntimeIdentifier)' == '$(NETCoreSdkRuntimeIdentifier)'
+                            and Exists('$(MSBuildProjectExtensionsPath)project.assets.json')">
+    <_MicrosoftAILocalAssetsText>$([System.IO.File]::ReadAllText('$(MSBuildProjectExtensionsPath)project.assets.json'))</_MicrosoftAILocalAssetsText>
+    <RuntimeIdentifier Condition="!$(_MicrosoftAILocalAssetsText.Contains('/$(RuntimeIdentifier)&quot;'))"></RuntimeIdentifier>
+    <_MicrosoftAILocalAssetsText />
+  </PropertyGroup>
+</Project>

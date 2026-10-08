@@ -1,0 +1,4 @@
+<Project>
+  <!-- Project references don't import buildTransitive assets; import the providers' targets like a package consumer would. -->
+  <Import Project="$(RepoRoot)src/Microsoft.AI.Local.Foundry/buildTransitive/Microsoft.AI.Local.Foundry.targets" />
+</Project>

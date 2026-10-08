@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
+    <RootNamespace>Microsoft.AI.Local.Windows</RootNamespace>
+    <Description>Shared infrastructure of the Windows inbox AI providers for Microsoft.AI.Local: provider options, the Phi Silica Limited Access Feature unlock, package-identity checks, content-filter options and the base classes the Microsoft.AI.Local.*.Windows task packages build on. Contains no models; reference a task package such as Microsoft.AI.Local.TextGeneration.Windows.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local\Microsoft.AI.Local.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" />
+    <!-- Lifts an unresolvable lower bound in the WinAppSDK graph (see Directory.Packages.props). Already part of the closure. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+  </ItemGroup>
+
+</Project>

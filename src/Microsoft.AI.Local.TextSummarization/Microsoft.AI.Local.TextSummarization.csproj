@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The text summarization contract of Microsoft.AI.Local: ITextSummarizer, ITextSummarizationModel and the TextSummarizationModels catalog, plus an adapter that summarizes with any chat model. Pure managed. Add a provider package such as Microsoft.AI.Local.TextSummarization.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

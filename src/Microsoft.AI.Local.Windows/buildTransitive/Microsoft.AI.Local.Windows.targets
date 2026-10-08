@@ -1,0 +1,43 @@
+<Project>
+  <!--
+    Phi Silica (and the text skills built on it) is a Limited Access Feature. Set these properties in the app project
+    and the package generates the assembly attribute the provider reads at run time:
+
+      <WindowsAILimitedAccessFeatureToken>...</WindowsAILimitedAccessFeatureToken>
+      <WindowsAILimitedAccessFeatureAttestation>... has registered their use of ...</WindowsAILimitedAccessFeatureAttestation>
+      <WindowsAILimitedAccessFeatureId>com.microsoft.windows.ai.languagemodel</WindowsAILimitedAccessFeatureId>  (default)
+
+    Keep the token out of source control (for example pass it with -p: or set it from an environment variable).
+  -->
+  <PropertyGroup>
+    <WindowsAILimitedAccessFeatureId Condition="'$(WindowsAILimitedAccessFeatureId)' == ''">com.microsoft.windows.ai.languagemodel</WindowsAILimitedAccessFeatureId>
+    <_WindowsAILafApplies Condition="'$(TargetPlatformIdentifier)' == 'windows' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">true</_WindowsAILafApplies>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(_WindowsAILafApplies)' == 'true' and '$(WindowsAILimitedAccessFeatureToken)' != '' and '$(WindowsAILimitedAccessFeatureAttestation)' != ''">
+    <AssemblyAttribute Include="Microsoft.AI.Local.Windows.WindowsAILimitedAccessFeatureAttribute">
+      <_Parameter1>$(WindowsAILimitedAccessFeatureId)</_Parameter1>
+      <_Parameter2>$(WindowsAILimitedAccessFeatureToken)</_Parameter2>
+      <_Parameter3>$(WindowsAILimitedAccessFeatureAttestation)</_Parameter3>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- The package manifest is an input of the Windows analyzers (MSAILOCAL102-103), which ship with Microsoft.AI.Local. -->
+  <Target Name="_WindowsAIAddPackageManifestToAnalyzers" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_WindowsAIPackageManifest Include="@(AppxManifest)" />
+      <_WindowsAIPackageManifest Include="$(MSBuildProjectDirectory)\Package.appxmanifest"
+                                 Condition="'@(AppxManifest)' == '' and Exists('$(MSBuildProjectDirectory)\Package.appxmanifest')" />
+      <AdditionalFiles Include="@(_WindowsAIPackageManifest->'%(FullPath)')" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="_WindowsAIValidateLimitedAccessFeature" BeforeTargets="CoreCompile" Condition="'$(_WindowsAILafApplies)' == 'true'">
+    <Warning Code="MSAILOCAL100"
+             Condition="'$(WindowsAILimitedAccessFeatureToken)' != '' and '$(WindowsAILimitedAccessFeatureAttestation)' == ''"
+             Text="WindowsAILimitedAccessFeatureToken is set but WindowsAILimitedAccessFeatureAttestation is empty. Phi Silica won't be unlocked. Set both properties." />
+    <Warning Code="MSAILOCAL100"
+             Condition="'$(WindowsAILimitedAccessFeatureToken)' == '' and '$(WindowsAILimitedAccessFeatureAttestation)' != ''"
+             Text="WindowsAILimitedAccessFeatureAttestation is set but WindowsAILimitedAccessFeatureToken is empty. Phi Silica won't be unlocked. Set both properties." />
+  </Target>
+</Project>

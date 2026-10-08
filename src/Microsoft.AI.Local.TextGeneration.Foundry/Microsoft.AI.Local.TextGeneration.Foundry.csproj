@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The Foundry Local text generation models for Microsoft.AI.Local.TextGeneration: every Foundry Local catalog model of this task, downloaded on first use and run in-process. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,389 @@
+{
+  "$schema": "./foundry-models.schema.json",
+  "provider": {
+    "name": "Foundry",
+    "namespace": "Microsoft.AI.Local.Foundry",
+    "idPrefix": "foundry",
+    "remarks": "Foundry Local downloads the model on first use (EnsureReadyAsync) and runs it in-process on Windows, macOS and Linux. Pin a device with WithDevice(LocalDevice.Gpu) from Microsoft.AI.Local.Foundry."
+  },
+  "models": [
+    {
+      "alias": "phi-4-mini",
+      "property": "Phi4Mini",
+      "displayName": "Phi-4-mini",
+      "publisher": "Microsoft",
+      "description": "3.8B-parameter instruction-tuned model with a 128K context; strong reasoning and tool calling for its size.",
+      "task": "text-generation",
+      "crossPlatform": true,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 131072
+      }
+    },
+    {
+      "alias": "phi-4-mini-reasoning",
+      "property": "Phi4MiniReasoning",
+      "displayName": "Phi-4-mini-reasoning",
+      "publisher": "Microsoft",
+      "description": "Phi-4-mini tuned for step-by-step mathematical reasoning.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": false,
+        "structuredOutput": true,
+        "reasoning": true,
+        "contextLength": 131072
+      }
+    },
+    {
+      "alias": "phi-4",
+      "property": "Phi4",
+      "displayName": "Phi-4",
+      "publisher": "Microsoft",
+      "description": "14B-parameter model for complex reasoning; needs a capable GPU or NPU and plenty of memory.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": false,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 16384
+      }
+    },
+    {
+      "alias": "phi-3.5-mini",
+      "property": "Phi35Mini",
+      "displayName": "Phi-3.5-mini",
+      "publisher": "Microsoft",
+      "description": "3.8B-parameter instruction-tuned model with a 128K context.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": false,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 131072
+      }
+    },
+    {
+      "alias": "qwen2.5-0.5b",
+      "property": "Qwen25_05B",
+      "displayName": "Qwen2.5 0.5B",
+      "publisher": "Alibaba",
+      "description": "Very small, fast chat model; good for simple tasks and constrained devices.",
+      "task": "text-generation",
+      "crossPlatform": true,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen2.5-1.5b",
+      "property": "Qwen25_15B",
+      "displayName": "Qwen2.5 1.5B",
+      "publisher": "Alibaba",
+      "description": "Small chat model balancing quality and speed.",
+      "task": "text-generation",
+      "crossPlatform": true,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen2.5-7b",
+      "property": "Qwen25_7B",
+      "displayName": "Qwen2.5 7B",
+      "publisher": "Alibaba",
+      "description": "General-purpose 7B chat model with tool calling.",
+      "task": "text-generation",
+      "crossPlatform": true,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen2.5-14b",
+      "property": "Qwen25_14B",
+      "displayName": "Qwen2.5 14B",
+      "publisher": "Alibaba",
+      "description": "Large general-purpose chat model; needs a capable GPU.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen2.5-coder-0.5b",
+      "property": "Qwen25Coder_05B",
+      "displayName": "Qwen2.5-Coder 0.5B",
+      "publisher": "Alibaba",
+      "description": "Very small code-generation model.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen2.5-coder-1.5b",
+      "property": "Qwen25Coder_15B",
+      "displayName": "Qwen2.5-Coder 1.5B",
+      "publisher": "Alibaba",
+      "description": "Small code-generation model.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen2.5-coder-7b",
+      "property": "Qwen25Coder_7B",
+      "displayName": "Qwen2.5-Coder 7B",
+      "publisher": "Alibaba",
+      "description": "Code-generation model for completion, explanation and repair.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen3.5-0.8b",
+      "property": "Qwen35_08B",
+      "displayName": "Qwen3.5 0.8B",
+      "publisher": "Alibaba",
+      "description": "Compact Qwen3.5 chat model with thinking mode.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": true,
+        "structuredOutput": true,
+        "reasoning": true,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "deepseek-r1-7b",
+      "property": "DeepSeekR1_7B",
+      "displayName": "DeepSeek-R1-Distill-Qwen 7B",
+      "publisher": "DeepSeek",
+      "description": "Reasoning model distilled from DeepSeek-R1; emits its chain of thought as reasoning content.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": false,
+        "structuredOutput": true,
+        "reasoning": true,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "mistral-7b-v0.2",
+      "property": "Mistral7B",
+      "displayName": "Mistral 7B Instruct v0.2",
+      "publisher": "Mistral AI",
+      "description": "General-purpose 7B instruction-tuned model.",
+      "task": "text-generation",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "toolCalling": false,
+        "structuredOutput": true,
+        "reasoning": false,
+        "contextLength": 32768
+      }
+    },
+    {
+      "alias": "qwen3-embedding-0.6b",
+      "property": "Qwen3Embedding_06B",
+      "displayName": "Qwen3-Embedding 0.6B",
+      "publisher": "Alibaba",
+      "description": "Multilingual text-embedding model for search, clustering and RAG.",
+      "task": "text-embedding",
+      "crossPlatform": true,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ]
+    },
+    {
+      "alias": "whisper-tiny",
+      "property": "WhisperTiny",
+      "displayName": "Whisper tiny",
+      "publisher": "OpenAI",
+      "description": "Fast multilingual speech recognition (39M parameters).",
+      "task": "speech-to-text",
+      "crossPlatform": true,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "audioInput": true
+      }
+    },
+    {
+      "alias": "nemotron-speech-streaming-en-0.6b",
+      "property": "NemotronSpeechStreamingEn_06B",
+      "displayName": "Nemotron Speech Streaming (English) 0.6B",
+      "publisher": "NVIDIA",
+      "description": "Low-latency streaming English speech recognition.",
+      "task": "speech-to-text",
+      "crossPlatform": false,
+      "platforms": [
+        "win-x64",
+        "win-arm64",
+        "osx-arm64",
+        "linux-x64",
+        "linux-arm64"
+      ],
+      "capabilities": {
+        "streaming": true,
+        "audioInput": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(PortableTargetFramework)</TargetFramework>
+    <RootNamespace>Microsoft.AI.Local.Foundry</RootNamespace>
+    <Description>Shared infrastructure of the Foundry Local providers for Microsoft.AI.Local: the Foundry Local runtime (lazy initialization, execution-provider download, model download and load), provider options, device selection (WithDevice) and the base classes the Microsoft.AI.Local.*.Foundry task packages build on. Contains no models; reference a task package such as Microsoft.AI.Local.TextGeneration.Foundry. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local\Microsoft.AI.Local.csproj" />
+    <PackageReference Include="Microsoft.AI.Foundry.Local" />
+    <!--
+      Foundry Local's runtime package forces a RuntimeIdentifier from its buildTransitive targets, which this
+      RID-agnostic library can't satisfy. Opt this project out; apps get the package transitively, and
+      buildTransitive/Microsoft.AI.Local.Foundry.targets keeps RID-less app builds working.
+    -->
+    <PackageReference Include="Microsoft.AI.Foundry.Local.Runtime" ExcludeAssets="buildTransitive" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+  </ItemGroup>
+
+</Project>

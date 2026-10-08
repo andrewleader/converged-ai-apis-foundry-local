@@ -1,0 +1,122 @@
+{
+  "provider": {
+    "name": "Windows",
+    "namespace": "Microsoft.AI.Local.Windows",
+    "idPrefix": "windows",
+    "remarks": "Built into Windows (Windows AI APIs) on Copilot+ PCs; Windows delivers and services the model. The app needs a Windows target framework, package identity and the systemAIModels capability; Phi Silica-based models also need a Limited Access Feature token."
+  },
+  "models": [
+    {
+      "alias": "phi-silica",
+      "property": "PhiSilica",
+      "displayName": "Phi Silica",
+      "publisher": "Microsoft",
+      "description": "The small language model built into Windows on Copilot+ PCs, running on the NPU.",
+      "task": "text-generation",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "streaming": true,
+        "structuredOutput": true
+      }
+    },
+    {
+      "alias": "text-summarization",
+      "property": "PhiSilica",
+      "displayName": "Text summarization (Phi Silica)",
+      "publisher": "Microsoft",
+      "description": "The Windows text summarizer, a Phi Silica skill tuned for summaries.",
+      "task": "text-summarization",
+      "platforms": [ "win-x64", "win-arm64" ]
+    },
+    {
+      "alias": "text-rewrite",
+      "property": "PhiSilica",
+      "displayName": "Text rewrite (Phi Silica)",
+      "publisher": "Microsoft",
+      "description": "The Windows text rewriter, a Phi Silica skill that changes tone or improves clarity.",
+      "task": "text-rewrite",
+      "platforms": [ "win-x64", "win-arm64" ]
+    },
+    {
+      "alias": "text-to-table",
+      "property": "PhiSilica",
+      "displayName": "Text to table (Phi Silica)",
+      "publisher": "Microsoft",
+      "description": "The Windows text-to-table converter, a Phi Silica skill that extracts tables from text.",
+      "task": "text-to-table",
+      "platforms": [ "win-x64", "win-arm64" ]
+    },
+    {
+      "alias": "text-recognition",
+      "property": "WindowsDefault",
+      "displayName": "Text recognition",
+      "publisher": "Microsoft",
+      "description": "The text recognizer (OCR) built into Windows.",
+      "task": "image-text-recognition",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "imageInput": true
+      }
+    },
+    {
+      "alias": "image-description",
+      "property": "WindowsDefault",
+      "displayName": "Image description",
+      "publisher": "Microsoft",
+      "description": "The image description generator built into Windows (brief, detailed, diagram and accessible descriptions).",
+      "task": "image-description",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "imageInput": true
+      }
+    },
+    {
+      "alias": "image-scaling",
+      "property": "WindowsDefault",
+      "displayName": "Image super-resolution",
+      "publisher": "Microsoft",
+      "description": "The image super-resolution model built into Windows.",
+      "task": "image-scaling",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "imageInput": true
+      }
+    },
+    {
+      "alias": "foreground-extraction",
+      "property": "WindowsForegroundExtraction",
+      "displayName": "Foreground extraction",
+      "publisher": "Microsoft",
+      "description": "The Windows object extractor applied to the main subject of the image; hints are optional.",
+      "task": "image-segmentation",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "imageInput": true
+      }
+    },
+    {
+      "alias": "object-extraction",
+      "property": "WindowsObjectExtraction",
+      "displayName": "Object extraction",
+      "publisher": "Microsoft",
+      "description": "The Windows object extractor applied to the object selected by include/exclude hints; at least one include hint is required.",
+      "task": "image-segmentation",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "imageInput": true
+      }
+    },
+    {
+      "alias": "object-removal",
+      "property": "WindowsDefault",
+      "displayName": "Object removal",
+      "publisher": "Microsoft",
+      "description": "The generative object remover (erase) built into Windows.",
+      "task": "image-object-removal",
+      "platforms": [ "win-x64", "win-arm64" ],
+      "capabilities": {
+        "imageInput": true
+      }
+    }
+  ]
+}

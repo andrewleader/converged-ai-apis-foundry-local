@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The text generation contract of Microsoft.AI.Local: ITextGenerationModel and the LanguageModels catalog (LanguageModels.PhiSilica, LanguageModels.Phi4Mini, ...); the client is Microsoft.Extensions.AI's IChatClient. Pure managed. Add a provider package such as Microsoft.AI.Local.TextGeneration.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

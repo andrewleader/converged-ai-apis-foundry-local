@@ -1,0 +1,11 @@
+<Project>
+  <!-- Project references don't import buildTransitive assets; import the packages' targets like a package consumer would. -->
+  <Import Project="$(RepoRoot)src/Microsoft.AI.Local/buildTransitive/Microsoft.AI.Local.targets" />
+  <Import Project="$(RepoRoot)src/Microsoft.AI.Local.Foundry/buildTransitive/Microsoft.AI.Local.Foundry.targets" />
+
+  <!-- Project references don't bring the analyzers either; add them like the Microsoft.AI.Local package does. -->
+  <ItemGroup Condition="'$(MicrosoftAILocalUseAnalyzers)' != 'false'">
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.Analyzers/Microsoft.AI.Local.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

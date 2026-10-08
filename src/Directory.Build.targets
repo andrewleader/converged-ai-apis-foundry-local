@@ -1,0 +1,47 @@
+<Project>
+  <!--
+    Platform-specific source files: *.Windows.cs compile only for Windows target frameworks, *.Portable.cs only for
+    the others. This keeps #if out of the code.
+  -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' != 'windows'">
+    <Compile Remove="**/*.Windows.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <Compile Remove="**/*.Portable.cs" />
+  </ItemGroup>
+
+  <!-- Task contract packages depend only on the core. -->
+  <ItemGroup Condition="'$(LocalAITask)' != '' and '$(LocalAIProvider)' == ''">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Microsoft.AI.Local/Microsoft.AI.Local.csproj" />
+  </ItemGroup>
+
+  <!-- Task provider packages depend on their task contract package and their provider's infrastructure package. -->
+  <ItemGroup Condition="'$(LocalAIProvider)' != ''">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Microsoft.AI.Local.$(LocalAITask)/Microsoft.AI.Local.$(LocalAITask).csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Microsoft.AI.Local.$(LocalAIProvider)/Microsoft.AI.Local.$(LocalAIProvider).csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(LocalAIProvider)' == 'Foundry'">
+    <!-- See Microsoft.AI.Local.Foundry.csproj: the runtime package's buildTransitive targets don't apply to RID-agnostic libraries. -->
+    <PackageReference Include="Microsoft.AI.Foundry.Local.Runtime" ExcludeAssets="buildTransitive" PrivateAssets="all" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Foundry/*.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <!-- The catalog manifests generate the task's catalog class (contract packages) or the provider's descriptors (provider packages). -->
+  <ItemGroup Condition="'$(LocalAITask)' != ''">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)Microsoft.AI.Local.Catalog.Generators/Microsoft.AI.Local.Catalog.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <AdditionalFiles Include="$(RepoRoot)eng/catalog/*-models.json" LinkBase="catalog" />
+    <CompilerVisibleProperty Include="LocalAITask;LocalAIProvider" />
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+  </ItemGroup>
+
+  <!-- Internal helpers shared by task contract packages (compiled into each, so the packages stay independent). -->
+  <ItemGroup Condition="'$(LocalAIProvider)' == '' and ('$(LocalAITask)' == 'TextGeneration' or '$(LocalAITask)' == 'TextEmbedding' or '$(LocalAITask)' == 'SpeechToText')">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Adapters/LazyClient.cs" LinkBase="Shared" />
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/DependencyInjection/*.cs" LinkBase="Shared" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(LocalAIProvider)' == '' and ('$(LocalAITask)' == 'TextSummarization' or '$(LocalAITask)' == 'TextRewrite' or '$(LocalAITask)' == 'TextToTable' or '$(LocalAITask)' == 'ImageDescription')">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/Adapters/ChatBackedModel.cs;$(MSBuildThisFileDirectory)Shared/Adapters/ChatClientSkillBase.cs" LinkBase="Shared" />
+  </ItemGroup>
+</Project>

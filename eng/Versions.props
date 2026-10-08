@@ -1,0 +1,51 @@
+<Project>
+  <!--
+    Package versions. Every task family (a task contract package and its provider packages) versions independently,
+    so a breaking change in one task's API (for example TextGeneration) doesn't touch another (for example
+    ImageTextRecognition). A task provider package always ships with the same version as its task contract package.
+    VersionSuffix is shared (Directory.Build.props) and can be overridden with the VersionSuffix parameter of pack.ps1.
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Microsoft.AI.Local'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Microsoft.AI.Local.Windows'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Microsoft.AI.Local.Foundry'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(LocalAITask)' == 'TextGeneration'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'TextEmbedding'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'SpeechToText'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'TextSummarization'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'TextRewrite'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'TextToTable'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'ImageTextRecognition'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'ImageDescription'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'ImageScaling'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'ImageSegmentation'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(LocalAITask)' == 'ImageObjectRemoval'">
+    <VersionPrefix>0.1.0</VersionPrefix>
+  </PropertyGroup>
+</Project>

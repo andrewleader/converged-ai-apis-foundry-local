@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The object removal contract of Microsoft.AI.Local: IImageObjectRemover, IObjectRemovalModel and the ImageObjectRemovalModels catalog. Pure managed. Add a provider package such as Microsoft.AI.Local.ImageObjectRemoval.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>
