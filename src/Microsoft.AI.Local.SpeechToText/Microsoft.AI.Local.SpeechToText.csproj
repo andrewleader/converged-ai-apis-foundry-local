@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The speech to text contract of Microsoft.AI.Local: ISpeechToTextModel and the SpeechToTextModels catalog; the client is Microsoft.Extensions.AI's ISpeechToTextClient (experimental). Pure managed. Add a provider package such as Microsoft.AI.Local.SpeechToText.Foundry to get models.</Description>
+  </PropertyGroup>
+
+</Project>

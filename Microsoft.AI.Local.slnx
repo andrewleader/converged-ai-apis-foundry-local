@@ -1,9 +1,40 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Microsoft.AI.Local/Microsoft.AI.Local.csproj" />
     <Project Path="src/Microsoft.AI.Local.Analyzers/Microsoft.AI.Local.Analyzers.csproj" />
-    <Project Path="src/Microsoft.AI.Local.Foundry.Generators/Microsoft.AI.Local.Foundry.Generators.csproj" />
+    <Project Path="src/Microsoft.AI.Local.Catalog.Generators/Microsoft.AI.Local.Catalog.Generators.csproj" />
+  </Folder>
+  <Folder Name="/src/providers/">
     <Project Path="src/Microsoft.AI.Local.Foundry/Microsoft.AI.Local.Foundry.csproj" />
     <Project Path="src/Microsoft.AI.Local.Windows/Microsoft.AI.Local.Windows.csproj" />
-    <Project Path="src/Microsoft.AI.Local/Microsoft.AI.Local.csproj" />
+  </Folder>
+  <Folder Name="/src/tasks/">
+    <Project Path="src/Microsoft.AI.Local.TextGeneration/Microsoft.AI.Local.TextGeneration.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextGeneration.Foundry/Microsoft.AI.Local.TextGeneration.Foundry.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextGeneration.Windows/Microsoft.AI.Local.TextGeneration.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextEmbedding/Microsoft.AI.Local.TextEmbedding.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextEmbedding.Foundry/Microsoft.AI.Local.TextEmbedding.Foundry.csproj" />
+    <Project Path="src/Microsoft.AI.Local.SpeechToText/Microsoft.AI.Local.SpeechToText.csproj" />
+    <Project Path="src/Microsoft.AI.Local.SpeechToText.Foundry/Microsoft.AI.Local.SpeechToText.Foundry.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextSummarization/Microsoft.AI.Local.TextSummarization.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextSummarization.Windows/Microsoft.AI.Local.TextSummarization.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextRewrite/Microsoft.AI.Local.TextRewrite.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextRewrite.Windows/Microsoft.AI.Local.TextRewrite.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextToTable/Microsoft.AI.Local.TextToTable.csproj" />
+    <Project Path="src/Microsoft.AI.Local.TextToTable.Windows/Microsoft.AI.Local.TextToTable.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageTextRecognition/Microsoft.AI.Local.ImageTextRecognition.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageTextRecognition.Windows/Microsoft.AI.Local.ImageTextRecognition.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageDescription/Microsoft.AI.Local.ImageDescription.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageDescription.Windows/Microsoft.AI.Local.ImageDescription.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageScaling/Microsoft.AI.Local.ImageScaling.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageScaling.Windows/Microsoft.AI.Local.ImageScaling.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageSegmentation/Microsoft.AI.Local.ImageSegmentation.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageSegmentation.Windows/Microsoft.AI.Local.ImageSegmentation.Windows.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageObjectRemoval/Microsoft.AI.Local.ImageObjectRemoval.csproj" />
+    <Project Path="src/Microsoft.AI.Local.ImageObjectRemoval.Windows/Microsoft.AI.Local.ImageObjectRemoval.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Microsoft.AI.Local.Analyzers.Tests/Microsoft.AI.Local.Analyzers.Tests.csproj" />
+    <Project Path="tests/Microsoft.AI.Local.Tests/Microsoft.AI.Local.Tests.csproj" />
   </Folder>
 </Solution>

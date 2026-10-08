@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The image super-resolution contract of Microsoft.AI.Local: IImageScaler, IImageScalingModel and the ImageScalingModels catalog. Pure managed. Add a provider package such as Microsoft.AI.Local.ImageScaling.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

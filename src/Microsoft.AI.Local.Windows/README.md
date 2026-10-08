@@ -1,31 +1,11 @@
 # Microsoft.AI.Local.Windows
 
-Windows inbox AI models for [Microsoft.AI.Local](https://www.nuget.org/packages/Microsoft.AI.Local), built on `Microsoft.WindowsAppSDK.AI`. Windows delivers and services the models and runs them out of process. **Your app doesn't carry ONNX Runtime or any model files.**
+The shared infrastructure of the Windows inbox AI providers for [Microsoft.AI.Local](https://www.nuget.org/packages/Microsoft.AI.Local). **It contains no models**: reference the Windows package of each task you use, for example `Microsoft.AI.Local.TextGeneration.Windows` (Phi Silica) or `Microsoft.AI.Local.ImageTextRecognition.Windows` (OCR). They bring this package in.
 
-| Handle | Contract | Client |
-|---|---|---|
-| `WindowsModels.PhiSilica` | `ITextGenerationModel` | `IChatClient` |
-| `WindowsModels.TextSummarization` / `TextRewrite` / `TextToTable` | text skill models | `ITextSummarizer` / `ITextRewriter` / `ITextToTableConverter` |
-| `WindowsModels.TextRecognition` | `ITextRecognitionModel` | `ITextRecognizer` (OCR) |
-| `WindowsModels.ImageDescription` | `IImageDescriptionModel` | `IImageDescriber` |
-| `WindowsModels.ImageScaling` | `IImageScalingModel` | `IImageScaler` (super resolution) |
-| `WindowsModels.ForegroundExtraction` / `ObjectExtraction` | `IImageSegmentationModel` | `IImageSegmenter` |
-| `WindowsModels.ObjectRemoval` | `IObjectRemovalModel` | `IImageObjectRemover` |
+It holds what every Windows task package shares, so each piece exists once per app:
 
-```csharp
-using Microsoft.AI.Local;
-using Microsoft.AI.Local.Windows;
-
-ITextGenerationModel model = WindowsModels.PhiSilica;
-await model.EnsureReadyAsync();
-using var chat = await model.CreateClientAsync();
-```
-
-## App requirements
-
-- **Target a Windows TFM** (for example `net8.0-windows10.0.19041.0`). A plain `net8.0` app gets the portable build, where every handle reports `NotSupportedOnPlatform`, so cross-platform code compiles without `#if`. Analyzer `MSAILOCAL101` flags this.
-- **Package identity and the `systemAIModels` capability** in `Package.appxmanifest`. Analyzers `MSAILOCAL102` and `MSAILOCAL103` check this.
-- **Phi Silica is a Limited Access Feature.** Set the token you received from Microsoft in the project (keep it out of source control). The package generates the assembly attribute the provider uses to unlock it:
+- `WindowsAIProvider.Configure(...)`: process-wide options.
+- The Phi Silica **Limited Access Feature** unlock. Set the token you received from Microsoft in the app project (keep it out of source control); the package generates the assembly attribute the providers use:
 
   ```xml
   <PropertyGroup>
@@ -34,8 +14,11 @@ using var chat = await model.CreateClientAsync();
   </PropertyGroup>
   ```
 
-Requirements that aren't met at run time are reported as `ModelAvailabilityStatus.MissingAppRequirement` with an actionable `Reason`, never as an exception from the handle.
+- Package-identity and capability checks, reported as `ModelAvailabilityStatus.MissingAppRequirement` with an actionable `Reason`.
+- `WindowsContentFilterOptions` (`options.WithWindowsContentFilter(...)`) and `WindowsImageFrame` (zero-copy `ImageBuffer` interop).
+- The provider SDK the Windows task packages build on (`Microsoft.AI.Local.Windows.Providers`: `WindowsModelBase<TClient>`, `WindowsLanguageModelBase<TClient>`, ...).
 
-## Windows-only fast paths
+## App requirements
 
-On Windows TFMs, the imaging clients accept and return `SoftwareBitmap` and `ImageBuffer` without copying (`ocr.RecognizeAsync(softwareBitmap)`), and `client.GetService<LanguageModel>()` returns the underlying WinRT object when you need an API this layer doesn't cover.
+- **Target a Windows TFM** (for example `net8.0-windows10.0.19041.0`). A plain `net8.0` app gets the portable build of the Windows task packages, where every handle reports `NotSupportedOnPlatform`, so cross-platform code compiles without `#if`. Analyzer `MSAILOCAL101` flags this.
+- **Package identity and the `systemAIModels` capability** in `Package.appxmanifest`. Analyzers `MSAILOCAL102` and `MSAILOCAL103` check this.

@@ -9,7 +9,7 @@ public static class LocalModel
     /// Returns the first model that is ready or can be made ready on this device, in order of preference.
     /// For example, prefer an inbox model on Copilot+ PCs and fall back to a Foundry model everywhere else.
     /// </summary>
-    /// <typeparam name="TModel">The model interface, for example <see cref="ITextGenerationModel"/>.</typeparam>
+    /// <typeparam name="TModel">The model interface, for example <c>ITextGenerationModel</c>.</typeparam>
     /// <param name="models">The candidate models, in order of preference.</param>
     /// <returns>The first available model.</returns>
     /// <exception cref="LocalModelNotSupportedException">None of the models is available. The message lists each model's status.</exception>
@@ -20,7 +20,7 @@ public static class LocalModel
     /// <summary>
     /// Returns the first model that is ready or can be made ready on this device, in order of preference.
     /// </summary>
-    /// <typeparam name="TModel">The model interface, for example <see cref="ITextGenerationModel"/>.</typeparam>
+    /// <typeparam name="TModel">The model interface, for example <c>ITextGenerationModel</c>.</typeparam>
     /// <param name="models">The candidate models, in order of preference.</param>
     /// <param name="cancellationToken">The <see cref="CancellationToken"/> to monitor for cancellation requests.</param>
     /// <returns>The first available model.</returns>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The image description contract of Microsoft.AI.Local: IImageDescriber, IImageDescriptionModel and the ImageDescriptionModels catalog, plus an adapter that describes images with any vision-capable chat model. Pure managed. Add a provider package such as Microsoft.AI.Local.ImageDescription.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

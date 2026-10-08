@@ -47,8 +47,9 @@ public enum ModelAvailabilityStatus
     DisabledByPolicy,
 
     /// <summary>
-    /// The app is missing a requirement, such as package identity, the <c>systemAIModels</c> capability, or a
-    /// Limited Access Feature token. <see cref="ModelAvailability.Reason"/> describes how to fix it.
+    /// The app is missing a requirement, such as the provider package that implements the model, package identity,
+    /// the <c>systemAIModels</c> capability, or a Limited Access Feature token. <see cref="ModelAvailability.Reason"/>
+    /// describes how to fix it.
     /// </summary>
     MissingAppRequirement,
 

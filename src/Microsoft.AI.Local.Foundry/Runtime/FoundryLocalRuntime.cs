@@ -174,12 +174,12 @@ internal sealed class FoundryCatalogModel : IFoundryCatalogModel
 
     public string Alias { get; }
 
-    public IReadOnlyList<IFoundryModelVariant> Variants { get; }
+    public IReadOnlyList<IFoundryModelVariantLifecycle> Variants { get; }
 
-    public IFoundryModelVariant DefaultVariant { get; }
+    public IFoundryModelVariantLifecycle DefaultVariant { get; }
 }
 
-internal sealed class FoundryModelVariant(IModel model) : IFoundryModelVariant
+internal sealed class FoundryModelVariant(IModel model) : IFoundryModelVariantLifecycle
 {
     public string Id => model.Id;
 
@@ -211,12 +211,6 @@ internal sealed class FoundryModelVariant(IModel model) : IFoundryModelVariant
     public Task LoadAsync(CancellationToken cancellationToken) => model.LoadAsync(cancellationToken);
 
     public Task UnloadAsync(CancellationToken cancellationToken) => model.UnloadAsync(cancellationToken);
-
-    public IFoundryChatEngine CreateChatEngine() => new FoundryLocalChatEngine(model);
-
-    public IFoundryEmbeddingEngine CreateEmbeddingEngine() => new FoundryLocalEmbeddingEngine(model);
-
-    public IFoundrySpeechEngine CreateSpeechEngine() => new FoundryLocalSpeechEngine(model);
 
     public override string ToString() => Id;
 }

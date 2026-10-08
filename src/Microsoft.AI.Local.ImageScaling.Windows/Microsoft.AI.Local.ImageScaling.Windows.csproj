@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The Windows inbox image super-resolution models for Microsoft.AI.Local.ImageScaling, delivered and serviced by Windows on Copilot+ PCs (Windows AI APIs, no ONNX Runtime in the app). The net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if.</Description>
+  </PropertyGroup>
+
+</Project>

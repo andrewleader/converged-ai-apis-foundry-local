@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Inputs of the Microsoft.AI.Local source generator and analyzers:
+      - MSAILOCAL201 and MSAILOCAL101-103 check executables only (OutputType), and MSAILOCAL101 checks the target framework.
+      - Set MicrosoftAILocalAutoRegisterProviders to false to stop the generator from registering the referenced
+        provider packages; then call each provider's <Provider><Task>Registration.Register() at startup.
+  -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="OutputType;TargetFramework;TargetPlatformIdentifier;MicrosoftAILocalAutoRegisterProviders" />
+  </ItemGroup>
+</Project>

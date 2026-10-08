@@ -9,8 +9,8 @@ public static class FoundryServiceCollectionExtensions
     /// Configures the Foundry Local provider (app name, cache directory, logging, execution providers, unload policy).
     /// </summary>
     /// <remarks>
-    /// <see cref="FoundryModels"/> handles are process-wide singletons, so this applies <see cref="FoundryProvider.Configure"/>
-    /// immediately. Combine it with <c>AddLocalChatClient(FoundryModels.Phi4Mini)</c> and friends to register clients.
+    /// Foundry model handles are process-wide singletons, so this applies <see cref="FoundryProvider.Configure"/>
+    /// immediately. Combine it with <c>AddLocalChatClient(LanguageModels.Phi4Mini)</c> and friends to register clients.
     /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">A callback that edits the provider options.</param>

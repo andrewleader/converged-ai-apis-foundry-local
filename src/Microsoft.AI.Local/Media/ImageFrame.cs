@@ -8,8 +8,8 @@ namespace Microsoft.AI.Local;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="ImageFrame"/> is the image type of the imaging contracts (<see cref="ITextRecognizer"/>,
-/// <see cref="IImageDescriber"/>, <see cref="IImageScaler"/>, ...). It has no dependency on System.Drawing,
+/// <see cref="ImageFrame"/> is the image type of the imaging contracts (<c>ITextRecognizer</c>,
+/// <c>IImageDescriber</c>, <c>IImageScaler</c>, ...). It has no dependency on System.Drawing,
 /// SkiaSharp or WinRT.
 /// </para>
 /// <para>

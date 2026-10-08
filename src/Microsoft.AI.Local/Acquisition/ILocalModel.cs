@@ -5,8 +5,8 @@ namespace Microsoft.AI.Local;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Handles are cheap, thread-safe singletons. Obtaining one (for example <c>WindowsModels.PhiSilica</c> or
-/// <c>FoundryModels.Phi4Mini</c>) performs no I/O. Network, disk and accelerator work happens only in
+/// Handles are cheap, thread-safe singletons. Obtaining one (for example <c>LanguageModels.PhiSilica</c> or
+/// <c>LanguageModels.Phi4Mini</c>) performs no I/O. Network, disk and accelerator work happens only in
 /// <see cref="GetAvailabilityAsync"/>, <see cref="EnsureReadyAsync"/> and
 /// <see cref="ILocalModel{TClient}.CreateClientAsync"/>.
 /// </para>

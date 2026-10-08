@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The text embedding contract of Microsoft.AI.Local: ITextEmbeddingModel and the TextEmbeddingModels catalog; the client is Microsoft.Extensions.AI's IEmbeddingGenerator. Pure managed. Add a provider package such as Microsoft.AI.Local.TextEmbedding.Foundry to get models.</Description>
+  </PropertyGroup>
+
+</Project>

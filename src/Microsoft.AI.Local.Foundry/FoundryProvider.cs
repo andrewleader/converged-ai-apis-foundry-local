@@ -8,7 +8,7 @@ namespace Microsoft.AI.Local.Foundry;
 /// </summary>
 /// <remarks>
 /// No setup code is required: the provider creates the Foundry Local manager lazily and thread-safely the first time a
-/// <see cref="FoundryModels"/> handle does I/O, with <c>AppName</c> defaulting to the entry assembly name. If the app
+/// Foundry model handle does I/O, with <c>AppName</c> defaulting to the entry assembly name. If the app
 /// already created <c>FoundryLocalManager</c> itself, the provider reuses that instance and ignores the
 /// manager-related options.
 /// </remarks>
@@ -35,7 +35,7 @@ public static class FoundryProvider
     }
 
     /// <summary>
-    /// Configures the provider. Call it at startup, before any <see cref="FoundryModels"/> handle does I/O; the
+    /// Configures the provider. Call it at startup, before any Foundry model handle does I/O; the
     /// manager-related options (<see cref="FoundryProviderOptions.AppName"/>, directories, logging) can't change
     /// after the Foundry Local manager has been created.
     /// </summary>
@@ -52,7 +52,7 @@ public static class FoundryProvider
             {
                 throw new InvalidOperationException(
                     "The Foundry Local manager has already been created; AppName, directories, catalog and logging options can't change. " +
-                    "Call FoundryProvider.Configure at startup, before using a FoundryModels handle.");
+                    "Call FoundryProvider.Configure at startup, before using a Foundry model handle.");
             }
 
             options = copy;

@@ -1,5 +1,11 @@
 {
   "$schema": "./foundry-models.schema.json",
+  "provider": {
+    "name": "Foundry",
+    "namespace": "Microsoft.AI.Local.Foundry",
+    "idPrefix": "foundry",
+    "remarks": "Foundry Local downloads the model on first use (EnsureReadyAsync) and runs it in-process on Windows, macOS and Linux. Pin a device with WithDevice(LocalDevice.Gpu) from Microsoft.AI.Local.Foundry."
+  },
   "models": [
     {
       "alias": "phi-4-mini",

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The Windows inbox text rewrite models for Microsoft.AI.Local.TextRewrite, delivered and serviced by Windows on Copilot+ PCs (Windows AI APIs, no ONNX Runtime in the app). The net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if.</Description>
+  </PropertyGroup>
+
+</Project>

@@ -10,6 +10,9 @@ namespace Microsoft.AI.Local.Windows;
 /// </remarks>
 public static class WindowsAIProvider
 {
+    /// <summary>The provider name reported by Windows inbox models and their clients.</summary>
+    public const string ProviderName = "Windows";
+
     private static readonly object Gate = new();
     private static WindowsAIProviderOptions options = new();
 
@@ -25,7 +28,7 @@ public static class WindowsAIProvider
         }
     }
 
-    /// <summary>Configures the provider. Call it at startup, before using any <see cref="WindowsModels"/> handle.</summary>
+    /// <summary>Configures the provider. Call it at startup, before using any Windows model handle.</summary>
     /// <param name="configure">A callback that edits a copy of the current options.</param>
     public static void Configure(Action<WindowsAIProviderOptions> configure)
     {

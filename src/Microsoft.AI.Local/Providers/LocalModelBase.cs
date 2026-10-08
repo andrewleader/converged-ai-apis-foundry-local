@@ -29,6 +29,17 @@ public abstract class LocalModelBase : ILocalModel
         Capabilities = capabilities ?? LocalModelCapabilities.None;
     }
 
+    /// <summary>Initializes a new instance of the <see cref="LocalModelBase"/> class from a catalog descriptor.</summary>
+    /// <param name="descriptor">The model descriptor; supplies the ID, display name, provider name and capabilities.</param>
+    protected LocalModelBase(LocalModelDescriptor descriptor)
+        : this(
+            (descriptor ?? throw new ArgumentNullException(nameof(descriptor))).Id,
+            descriptor.DisplayName,
+            descriptor.ProviderName,
+            descriptor.Capabilities)
+    {
+    }
+
     /// <inheritdoc/>
     public string Id { get; }
 
@@ -275,6 +286,13 @@ public abstract class LocalModelBase<TClient> : LocalModelBase, ILocalModel<TCli
     /// <param name="capabilities">The capabilities of the model.</param>
     protected LocalModelBase(string id, string displayName, string providerName, LocalModelCapabilities? capabilities = null)
         : base(id, displayName, providerName, capabilities)
+    {
+    }
+
+    /// <summary>Initializes a new instance of the <see cref="LocalModelBase{TClient}"/> class from a catalog descriptor.</summary>
+    /// <param name="descriptor">The model descriptor.</param>
+    protected LocalModelBase(LocalModelDescriptor descriptor)
+        : base(descriptor)
     {
     }
 

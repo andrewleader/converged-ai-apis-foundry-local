@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The text rewrite contract of Microsoft.AI.Local: ITextRewriter, ITextRewriteModel and the TextRewriteModels catalog, plus an adapter that rewrites with any chat model. Pure managed. Add a provider package such as Microsoft.AI.Local.TextRewrite.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

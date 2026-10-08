@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The image segmentation contract of Microsoft.AI.Local: IImageSegmenter, IImageSegmentationModel and the ImageSegmentationModels catalog. Pure managed. Add a provider package such as Microsoft.AI.Local.ImageSegmentation.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

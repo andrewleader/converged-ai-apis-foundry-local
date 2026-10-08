@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The text recognition (OCR) contract of Microsoft.AI.Local: ITextRecognizer, ITextRecognitionModel and the ImageTextRecognitionModels catalog. Pure managed. Add a provider package such as Microsoft.AI.Local.ImageTextRecognition.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>

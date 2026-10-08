@@ -7,9 +7,43 @@
     <IsTrimmable>true</IsTrimmable>
     <IsAotCompatible>true</IsAotCompatible>
     <EnablePackageValidation>true</EnablePackageValidation>
+    <!-- Speech-to-text builds on Microsoft.Extensions.AI's experimental ISpeechToTextClient (MEAI001); ours is MSAILOCAL001. -->
+    <NoWarn>$(NoWarn);MEAI001;MSAILOCAL001</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    Package conventions (see PROPOSAL.md §7). The project name says what a project is:
+      Microsoft.AI.Local.<Task>             task contract package: model interface, client contract, catalog class
+      Microsoft.AI.Local.<Task>.<Provider>  task provider package: implements <Task> for <Provider>
+    LocalAITask and LocalAIProvider drive the references, target frameworks, catalog generation and versions below and
+    in Directory.Build.targets, so those projects only declare their description.
+  -->
+  <PropertyGroup>
+    <LocalAITasks>TextGeneration;TextEmbedding;SpeechToText;TextSummarization;TextRewrite;TextToTable;ImageTextRecognition;ImageDescription;ImageScaling;ImageSegmentation;ImageObjectRemoval</LocalAITasks>
+    <_LocalAIName Condition="$(MSBuildProjectName.StartsWith('Microsoft.AI.Local.'))">$(MSBuildProjectName.Substring(19))</_LocalAIName>
+    <_LocalAIDot>$(_LocalAIName.IndexOf('.'))</_LocalAIDot>
+    <_LocalAISegment Condition="'$(_LocalAIDot)' == '-1'">$(_LocalAIName)</_LocalAISegment>
+    <_LocalAISegment Condition="'$(_LocalAIDot)' != '-1'">$(_LocalAIName.Substring(0, $(_LocalAIDot)))</_LocalAISegment>
+    <LocalAITask Condition="'$(_LocalAISegment)' != '' and $([System.String]::Copy(';$(LocalAITasks);').Contains(';$(_LocalAISegment);'))">$(_LocalAISegment)</LocalAITask>
+    <LocalAIProvider Condition="'$(LocalAITask)' != '' and '$(_LocalAIDot)' != '-1'">$(_LocalAIName.Substring($([MSBuild]::Add($(_LocalAIDot), 1))))</LocalAIProvider>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(LocalAITask)' != ''">
+    <RootNamespace Condition="'$(LocalAIProvider)' == ''">Microsoft.AI.Local</RootNamespace>
+    <RootNamespace Condition="'$(LocalAIProvider)' != ''">Microsoft.AI.Local.$(LocalAIProvider)</RootNamespace>
+    <TargetFramework Condition="'$(LocalAIProvider)' != 'Windows'">$(PortableTargetFramework)</TargetFramework>
+    <!-- Windows providers also build for net8.0, where every model reports NotSupportedOnPlatform (PROPOSAL.md §9). -->
+    <TargetFrameworks Condition="'$(LocalAIProvider)' == 'Windows'">$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
+  </PropertyGroup>
+
+  <!-- TargetFramework is a global property in each inner build, so Windows-only settings can be applied here. -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/README.md')">
     <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
+
+  <Import Project="$(RepoRoot)eng/Versions.props" />
 </Project>

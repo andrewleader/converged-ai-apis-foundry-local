@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Microsoft.AI.Local.Analyzers</RootNamespace>
-    <Description>Build-time checks for Microsoft.AI.Local apps (target framework, package manifest capability, package identity). Packed into the provider packages.</Description>
+    <Description>Build-time support for Microsoft.AI.Local apps: registers the referenced provider packages (source generator) and checks for missing provider packages and Windows app requirements (target framework, package manifest capability, package identity). Packed into Microsoft.AI.Local.</Description>
     <IsPackable>false</IsPackable>
     <IsTrimmable>false</IsTrimmable>
     <IsAotCompatible>false</IsAotCompatible>
@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Analyzers.Tests" />
   </ItemGroup>
 
 </Project>

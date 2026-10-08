@@ -22,11 +22,7 @@
     </AssemblyAttribute>
   </ItemGroup>
 
-  <!-- Inputs for the Microsoft.AI.Local analyzers (MSAILOCAL101-103): target framework, output type and package manifest. -->
-  <ItemGroup>
-    <CompilerVisibleProperty Include="OutputType;TargetFramework;TargetPlatformIdentifier" />
-  </ItemGroup>
-
+  <!-- The package manifest is an input of the Windows analyzers (MSAILOCAL102-103), which ship with Microsoft.AI.Local. -->
   <Target Name="_WindowsAIAddPackageManifestToAnalyzers" BeforeTargets="CoreCompile">
     <ItemGroup>
       <_WindowsAIPackageManifest Include="@(AppxManifest)" />

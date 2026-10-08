@@ -3,13 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
     <RootNamespace>Microsoft.AI.Local</RootNamespace>
-    <Description>Converged contracts for on-device AI in .NET: one model-acquisition contract and one inference contract per task type (built on Microsoft.Extensions.AI). Pure managed; no native dependencies. Reference a provider package such as Microsoft.AI.Local.Windows or Microsoft.AI.Local.Foundry to get models.</Description>
-    <!-- ISpeechToTextClient is experimental in Microsoft.Extensions.AI; our wrappers are marked [Experimental("MSAILOCAL001")]. -->
-    <NoWarn>$(NoWarn);MEAI001;MSAILOCAL001</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Description>The shared core of the converged local AI APIs for .NET: one model-acquisition contract (ILocalModel with availability, staged progress and coalesced EnsureReadyAsync), the shared image type, errors, diagnostics, model selection, and the model catalog that the task packages (Microsoft.AI.Local.TextGeneration, Microsoft.AI.Local.ImageTextRecognition, ...) and provider packages plug into. Pure managed; no native dependencies. Includes the build-time checks and the source generator that registers the provider packages an app references.</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +14,15 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Provider registration (source generator) and the MSAILOCAL101-103 and MSAILOCAL201 checks ship with the core. -->
+    <ProjectReference Include="..\Microsoft.AI.Local.Analyzers\Microsoft.AI.Local.Analyzers.csproj"
+                      ReferenceOutputAssembly="false" PrivateAssets="all" SetTargetFramework="TargetFramework=netstandard2.0" />
+    <None Include="..\Microsoft.AI.Local.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.AI.Local.Analyzers.dll"
+          Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

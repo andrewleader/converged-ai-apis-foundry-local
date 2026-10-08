@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <!-- The tests run on net8.0, where Windows models report NotSupportedOnPlatform (MSAILOCAL101), and have no package manifest (MSAILOCAL103). -->
+    <NoWarn>$(NoWarn);MSAILOCAL101;MSAILOCAL103</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.TextGeneration.Foundry/Microsoft.AI.Local.TextGeneration.Foundry.csproj" />
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.TextGeneration.Windows/Microsoft.AI.Local.TextGeneration.Windows.csproj" />
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.TextEmbedding.Foundry/Microsoft.AI.Local.TextEmbedding.Foundry.csproj" />
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.SpeechToText.Foundry/Microsoft.AI.Local.SpeechToText.Foundry.csproj" />
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.TextSummarization.Windows/Microsoft.AI.Local.TextSummarization.Windows.csproj" />
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.ImageTextRecognition.Windows/Microsoft.AI.Local.ImageTextRecognition.Windows.csproj" />
+    <!-- Contract only (no provider): exercises the MissingAppRequirement placeholder. -->
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.AI.Local.ImageScaling/Microsoft.AI.Local.ImageScaling.csproj" />
+  </ItemGroup>
+
+</Project>

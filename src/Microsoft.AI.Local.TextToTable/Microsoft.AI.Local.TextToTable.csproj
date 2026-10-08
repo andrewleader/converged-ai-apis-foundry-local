@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>The text to table contract of Microsoft.AI.Local: ITextToTableConverter, ITextToTableModel and the TextToTableModels catalog, plus an adapter that converts with any chat model. Pure managed. Add a provider package such as Microsoft.AI.Local.TextToTable.Windows to get models.</Description>
+  </PropertyGroup>
+
+</Project>
