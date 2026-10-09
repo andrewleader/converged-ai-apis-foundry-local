@@ -39,6 +39,20 @@ Every catalog class lists every provider's models of its task. Using a handle wh
 
 The models come from the manifests in [eng/catalog](eng/catalog), and package versions from [eng/Versions.props](eng/Versions.props).
 
+## Model catalog website
+
+[`site/`](site) is a static website that lists every model in the manifests, with search, filters (task, provider, operating system and platform RID, cross-platform validation, capabilities, context length, publisher), a view by task, and install and code snippets for each model. It reads `eng/catalog/*-models.json` at run time, so adding a model to a manifest is all it takes to publish it.
+
+The [Deploy model catalog site](.github/workflows/pages.yml) workflow publishes it to GitHub Pages on every push to `main` that changes `site/` or `eng/catalog/`. Enable it once in **Settings > Pages** by setting **Source** to **GitHub Actions**.
+
+To preview it locally, serve the repository root and open `http://localhost:8000/site/`:
+
+```powershell
+python -m http.server 8000
+```
+
+When adding a task type, add it to the `TASKS` table in [site/app.js](site/app.js) as well as to `CatalogTask.All`.
+
 ## Build local NuGet packages
 
 Run the repository-root packaging script:
