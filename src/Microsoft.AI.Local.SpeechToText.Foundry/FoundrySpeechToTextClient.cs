@@ -1,14 +1,23 @@
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using Microsoft.AI.Local.Foundry.Providers;
 using Microsoft.AI.Local.Foundry.Runtime;
 using Microsoft.AI.Local.Providers;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.AI.Local.Foundry;
 
-/// <summary>An <see cref="ISpeechToTextClient"/> over a loaded Foundry Local speech-recognition model (e.g. Whisper).</summary>
-internal sealed class FoundrySpeechToTextClient : ISpeechToTextClient
+/// <summary>
+/// An <see cref="ISpeechToTextClient"/> over a loaded Foundry Local speech-recognition model (e.g. Whisper). Accepts
+/// encoded audio (WAV, MP3, FLAC, Ogg), headerless PCM (with <see cref="SpeechToTextOptions.SpeechSampleRate"/>) and
+/// live streams such as <see cref="MicrophoneStream"/>. Live audio is transcribed while it arrives when the model
+/// supports live transcription, and when the stream ends otherwise.
+/// </summary>
+internal sealed partial class FoundrySpeechToTextClient : ISpeechToTextClient
 {
+    private const int LiveChunkSamples = 1600;
+
     private readonly ILocalModel _handle;
     private readonly IFoundryModelVariant _variant;
     private readonly IFoundrySpeechEngine _engine;
@@ -24,9 +33,12 @@ internal sealed class FoundrySpeechToTextClient : ISpeechToTextClient
         _metadata = new SpeechToTextClientMetadata(FoundryProvider.ProviderName, providerUri: null, defaultModelId: variant.Id);
     }
 
+    private ILogger Logger => field ??= LocalAIOptions.Default.LoggerFactory.CreateLogger<FoundrySpeechToTextClient>();
+
     public async Task<SpeechToTextResponse> GetTextAsync(Stream audioSpeechStream, SpeechToTextOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var audio = await ReadAudioAsync(audioSpeechStream, options, cancellationToken).ConfigureAwait(false);
+        var input = await OpenAsync(audioSpeechStream, options, cancellationToken).ConfigureAwait(false);
+        var audio = await ReadAudioAsync(input, options, cancellationToken).ConfigureAwait(false);
         FoundrySpeechResult result;
         try
         {
@@ -39,7 +51,7 @@ internal sealed class FoundrySpeechToTextClient : ISpeechToTextClient
 
         var response = new SpeechToTextResponse(result.Text)
         {
-            ResponseId = Guid.NewGuid().ToString("N"),
+            ResponseId = NewId(),
             ModelId = _variant.Id,
             StartTime = result.Segments.FirstOrDefault()?.Start ?? TimeSpan.Zero,
             EndTime = result.Duration ?? result.Segments.LastOrDefault()?.End,
@@ -59,36 +71,42 @@ internal sealed class FoundrySpeechToTextClient : ISpeechToTextClient
         SpeechToTextOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var audio = await ReadAudioAsync(audioSpeechStream, options, cancellationToken).ConfigureAwait(false);
-        var responseId = Guid.NewGuid().ToString("N");
+        var input = await OpenAsync(audioSpeechStream, options, cancellationToken).ConfigureAwait(false);
+        var responseId = NewId();
 
-        var enumerator = _engine.StreamAsync(audio, cancellationToken).GetAsyncEnumerator(cancellationToken);
-        await using var enumeratorScope = enumerator.ConfigureAwait(false);
-        while (true)
+        if (input.IsLive && await TryStartLiveAsync(options, cancellationToken).ConfigureAwait(false) is { } live)
         {
-            FoundrySpeechSegment segment;
-            try
+            var state = new LiveState();
+            await using (live.ConfigureAwait(false))
             {
-                if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                await foreach (var update in StreamLiveAsync(input.OpenPcm(AudioFormat.Speech), live, state, responseId, cancellationToken).ConfigureAwait(false))
                 {
-                    yield break;
+                    yield return update;
                 }
-
-                segment = enumerator.Current;
-            }
-            catch (Exception ex) when (FoundryErrors.Wrap(ex, _variant.Id) is var wrapped && !ReferenceEquals(wrapped, ex))
-            {
-                throw wrapped;
             }
 
-            yield return new SpeechToTextResponseUpdate(segment.Text)
+            if (state.LiveError is null)
             {
-                Kind = segment.IsFinal ? SpeechToTextResponseUpdateKind.TextUpdated : SpeechToTextResponseUpdateKind.TextUpdating,
-                ResponseId = responseId,
-                ModelId = _variant.Id,
-                StartTime = segment.Start,
-                EndTime = segment.End,
-            };
+                yield break;
+            }
+
+            // The model can't transcribe live: transcribe the audio captured until the stream ended.
+            Log.LiveTranscriptionUnavailable(Logger, _variant.Id, state.LiveError);
+            var buffered = new FoundryAudio("wav", WaveAudio.Encode(state.Buffered.ToArray(), AudioFormat.Speech));
+            await foreach (var segment in WrapErrors(_engine.StreamAsync(buffered, cancellationToken), cancellationToken).ConfigureAwait(false))
+            {
+                yield return ToUpdate(segment, responseId);
+            }
+
+            yield break;
+        }
+
+        // Finite audio, or a model without live transcription: transcribe the whole audio (for live input, once the
+        // stream ends) and stream the segments.
+        var audio = await ReadAudioAsync(input, options, cancellationToken).ConfigureAwait(false);
+        await foreach (var segment in WrapErrors(_engine.StreamAsync(audio, cancellationToken), cancellationToken).ConfigureAwait(false))
+        {
+            yield return ToUpdate(segment, responseId);
         }
     }
 
@@ -109,51 +127,224 @@ internal sealed class FoundrySpeechToTextClient : ISpeechToTextClient
 
     public void Dispose() => _lease.Dispose();
 
-    private static async Task<FoundryAudio> ReadAudioAsync(Stream stream, SpeechToTextOptions? options, CancellationToken cancellationToken)
+    private static string NewId() => Guid.NewGuid().ToString("N");
+
+    private static async Task<AudioInput> OpenAsync(Stream stream, SpeechToTextOptions? options, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        if (options?.SpeechLanguage is not null)
-        {
-            LocalAIProviderHelpers.ReportUnsupportedOption(FoundryProvider.ProviderName, "SpeechToTextOptions.SpeechLanguage");
-        }
-
         if (options?.TextLanguage is not null)
         {
             LocalAIProviderHelpers.ReportUnsupportedOption(FoundryProvider.ProviderName, "SpeechToTextOptions.TextLanguage");
         }
 
-        using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-        var data = buffer.ToArray();
-        return new FoundryAudio(AudioFormat.Detect(data), data);
+        AudioFormat? raw = options?.SpeechSampleRate is { } rate and > 0 ? new AudioFormat(rate, 1, AudioSampleFormat.Pcm16) : null;
+        var input = await AudioInput.OpenAsync(stream, raw, cancellationToken).ConfigureAwait(false);
+        if (input.Container is null)
+        {
+            throw new NotSupportedException(
+                "Unrecognized audio format. Foundry Local speech models accept WAV, MP3, FLAC and Ogg audio, and headerless 16-bit PCM when SpeechToTextOptions.SpeechSampleRate is set.");
+        }
+
+        return input;
     }
-}
 
-/// <summary>Detects the container format of encoded audio from its header.</summary>
-internal static class AudioFormat
-{
-    public static string Detect(ReadOnlySpan<byte> data)
+    // Encoded audio is passed through; uncompressed audio of unknown length (live or headerless) becomes a 16 kHz WAV.
+    private static async Task<FoundryAudio> ReadAudioAsync(AudioInput input, SpeechToTextOptions? options, CancellationToken cancellationToken)
     {
-        if (data.Length >= 12 && data[..4].SequenceEqual("RIFF"u8) && data.Slice(8, 4).SequenceEqual("WAVE"u8))
+        // Only live sessions take a language; whole-audio transcription detects it.
+        if (options?.SpeechLanguage is not null)
         {
-            return "wav";
+            LocalAIProviderHelpers.ReportUnsupportedOption(FoundryProvider.ProviderName, "SpeechToTextOptions.SpeechLanguage");
         }
 
-        if (data.Length >= 4 && data[..4].SequenceEqual("fLaC"u8))
+        if (input.Format is not null && (input.IsLive || input.Container == "pcm"))
         {
-            return "flac";
+            return new FoundryAudio("wav", await input.ReadAsWaveAsync(AudioFormat.Speech, cancellationToken).ConfigureAwait(false));
         }
 
-        if (data.Length >= 4 && data[..4].SequenceEqual("OggS"u8))
+        return new FoundryAudio(input.Container!, await input.ReadAllBytesAsync(cancellationToken).ConfigureAwait(false));
+    }
+
+    private static SpeechToTextResponseUpdate ToUpdate(FoundrySpeechSegment segment, string responseId) => new(segment.Text)
+    {
+        Kind = segment.IsFinal ? SpeechToTextResponseUpdateKind.TextUpdated : SpeechToTextResponseUpdateKind.TextUpdating,
+        ResponseId = responseId,
+        StartTime = segment.Start,
+        EndTime = segment.End,
+    };
+
+    private async Task<IFoundryLiveTranscription?> TryStartLiveAsync(SpeechToTextOptions? options, CancellationToken cancellationToken)
+    {
+        try
         {
-            return "ogg";
+            return await _engine.StartLiveAsync(AudioFormat.Speech, options?.SpeechLanguage, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Fall back to transcribing the audio when the stream ends.
+            Log.LiveTranscriptionUnavailable(Logger, _variant.Id, ex);
+            return null;
+        }
+    }
+
+    private async IAsyncEnumerable<SpeechToTextResponseUpdate> StreamLiveAsync(
+        PcmAudioReader reader,
+        IFoundryLiveTranscription live,
+        LiveState state,
+        string responseId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var updates = Channel.CreateUnbounded<SpeechToTextResponseUpdate>(new UnboundedChannelOptions { SingleReader = true });
+        var results = ForwardResultsAsync(live, state, responseId, updates.Writer, stop.Token);
+        var pump = PumpLiveAsync(reader, live, state, updates.Writer, stop.Token);
+        try
+        {
+            await foreach (var update in updates.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            {
+                yield return update;
+            }
+
+            // If live transcription failed, this drains the rest of the audio into the buffer.
+            await pump.ConfigureAwait(false);
+        }
+        finally
+        {
+            if (!pump.IsCompleted || !results.IsCompleted)
+            {
+                await stop.CancelAsync().ConfigureAwait(false);
+            }
+
+            await Task.WhenAll(pump, results).ContinueWith(static t => _ = t.Exception, TaskScheduler.Default).ConfigureAwait(false);
+        }
+    }
+
+    // Appends the audio as it arrives, then stops the session so it flushes the last result. Until the first result,
+    // the audio is also kept so it can be transcribed another way if the model can't transcribe live. A failure (for
+    // example a microphone error) ends the updates with that error.
+    private static async Task PumpLiveAsync(
+        PcmAudioReader reader,
+        IFoundryLiveTranscription live,
+        LiveState state,
+        ChannelWriter<SpeechToTextResponseUpdate> updates,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var samples = new short[LiveChunkSamples];
+            int read;
+            while ((read = await reader.ReadAsync(samples, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                var bytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(samples.AsSpan(0, read)).ToArray();
+                if (!state.ResultSeen)
+                {
+                    state.Buffered.Write(bytes);
+                }
+                else if (state.Buffered.Length > 0)
+                {
+                    state.Buffered.SetLength(0);
+                }
+
+                if (state.LiveError is null)
+                {
+                    try
+                    {
+                        await live.AppendAsync(bytes, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception) when (state.LiveError is not null)
+                    {
+                        // The session failed while appending; keep buffering for the fallback.
+                    }
+                }
+            }
+
+            if (state.LiveError is null)
+            {
+                await live.StopAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            updates.TryComplete(ex);
+            throw;
+        }
+    }
+
+    private async Task ForwardResultsAsync(IFoundryLiveTranscription live, LiveState state, string responseId, ChannelWriter<SpeechToTextResponseUpdate> updates, CancellationToken cancellationToken)
+    {
+        Exception? error = null;
+        try
+        {
+            await foreach (var segment in WrapErrors(live.GetResultsAsync(cancellationToken), cancellationToken).ConfigureAwait(false))
+            {
+                state.ResultSeen = true;
+                updates.TryWrite(ToUpdate(segment, responseId));
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && !state.ResultSeen)
+        {
+            // Failing before any result means the model can't transcribe live; the caller falls back.
+            state.LiveError = ex;
+        }
+        catch (Exception ex)
+        {
+            error = ex;
+        }
+        finally
+        {
+            updates.TryComplete(error);
+        }
+    }
+
+    /// <summary>State shared by the live audio pump and the results reader.</summary>
+    private sealed class LiveState
+    {
+        private volatile bool _resultSeen;
+        private volatile Exception? _liveError;
+
+        public MemoryStream Buffered { get; } = new();
+
+        public bool ResultSeen
+        {
+            get => _resultSeen;
+            set => _resultSeen = value;
         }
 
-        if ((data.Length >= 3 && data[..3].SequenceEqual("ID3"u8)) || (data.Length >= 2 && data[0] == 0xFF && (data[1] & 0xE0) == 0xE0))
+        public Exception? LiveError
         {
-            return "mp3";
+            get => _liveError;
+            set => _liveError = value;
         }
+    }
 
-        throw new NotSupportedException("Unrecognized audio format. Foundry Local speech models accept WAV, MP3, FLAC and Ogg audio.");
+    private async IAsyncEnumerable<FoundrySpeechSegment> WrapErrors(IAsyncEnumerable<FoundrySpeechSegment> source, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var enumeratorScope = enumerator.ConfigureAwait(false);
+        while (true)
+        {
+            FoundrySpeechSegment segment;
+            try
+            {
+                if (!await enumerator.MoveNextAsync().ConfigureAwait(false))
+                {
+                    yield break;
+                }
+
+                segment = enumerator.Current;
+            }
+            catch (Exception ex) when (FoundryErrors.Wrap(ex, _variant.Id) is var wrapped && !ReferenceEquals(wrapped, ex))
+            {
+                throw wrapped;
+            }
+
+            yield return segment;
+        }
+    }
+
+    private static partial class Log
+    {
+        [LoggerMessage(200, LogLevel.Debug, "Model '{ModelId}' doesn't support live transcription; live audio is transcribed when the stream ends.")]
+        public static partial void LiveTranscriptionUnavailable(ILogger logger, string modelId, Exception exception);
     }
 }

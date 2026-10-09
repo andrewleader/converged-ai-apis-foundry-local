@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
+    <RootNamespace>Microsoft.AI.Local</RootNamespace>
+    <Description>Audio building blocks for Microsoft.AI.Local: microphone capture (Windows), live audio streams any speech-to-text model can transcribe, and the WAV decoding and resampling the speech providers share. Pure managed; no native dependencies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Microsoft.AI.Local.Tests" />
+  </ItemGroup>
+
+</Project>

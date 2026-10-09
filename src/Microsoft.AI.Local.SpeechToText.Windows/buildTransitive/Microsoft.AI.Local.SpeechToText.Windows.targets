@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    MSAILOCAL104: Windows speech recognition (Microsoft.Windows.AI.Speech) ships only in the experimental Windows App SDK.
+    If something else in the app (for example the Microsoft.WindowsAppSDK metapackage) raises Microsoft.WindowsAppSDK.AI
+    to a stable version, the speech API is missing and SpeechToTextModels.WindowsDefault reports MissingAppRequirement.
+    Warn at build time instead. Set MicrosoftAILocalSkipSpeechSdkCheck to true to turn the check off.
+  -->
+  <Target Name="_MicrosoftAILocalCheckSpeechWindowsAppSdk"
+          AfterTargets="ResolvePackageAssets"
+          Condition="'$(TargetPlatformIdentifier)' == 'windows' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe') and '$(MicrosoftAILocalSkipSpeechSdkCheck)' != 'true'">
+    <ItemGroup>
+      <_MicrosoftAILocalWindowsAppSdkAI Include="@(ResolvedCompileFileDefinitions)" Condition="'%(ResolvedCompileFileDefinitions.NuGetPackageId)' == 'Microsoft.WindowsAppSDK.AI'" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_MicrosoftAILocalWindowsAppSdkAIVersion>@(_MicrosoftAILocalWindowsAppSdkAI->'%(NuGetPackageVersion)'->Distinct())</_MicrosoftAILocalWindowsAppSdkAIVersion>
+    </PropertyGroup>
+    <Warning Code="MSAILOCAL104"
+             Condition="'$(_MicrosoftAILocalWindowsAppSdkAIVersion)' != '' and !$(_MicrosoftAILocalWindowsAppSdkAIVersion.Contains('experimental'))"
+             Text="Microsoft.AI.Local.SpeechToText.Windows needs the experimental Windows App SDK, but this project resolves Microsoft.WindowsAppSDK.AI $(_MicrosoftAILocalWindowsAppSdkAIVersion), which doesn't include speech recognition, so SpeechToTextModels.WindowsDefault reports MissingAppRequirement. Reference an experimental Microsoft.WindowsAppSDK.AI (or Microsoft.WindowsAppSDK) package explicitly, or remove the reference that raises it to a stable version." />
+  </Target>
+</Project>

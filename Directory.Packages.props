@@ -6,12 +6,20 @@
   </ItemGroup>
 
   <ItemGroup Label="Provider SDKs">
-    <PackageVersion Include="Microsoft.WindowsAppSDK.AI" Version="2.5.5" />
-    <!-- Microsoft.WindowsAppSDK.Foundation 2.3.12 depends on InteractiveExperiences >= 2.1.8, which was never published (NU1603). -->
-    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
+    <!--
+      The Windows packages declare the lowest Windows App SDK AI version they need, so an app can move to a newer stable
+      or experimental build. It must stay below the experimental version used for speech: 2.5.4-experimental sorts below
+      2.5.5, so a 2.5.5 floor would silently replace the experimental build (and remove speech) in apps that use both.
+    -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.AI" Version="2.4.4" />
     <PackageVersion Include="Microsoft.AI.Foundry.Local" Version="2.1.0" />
     <PackageVersion Include="Microsoft.AI.Foundry.Local.Runtime" Version="2.1.0" />
   </ItemGroup>
+
+  <PropertyGroup Label="Experimental provider SDKs">
+    <!-- Windows speech recognition (Microsoft.Windows.AI.Speech) ships only in the experimental Windows App SDK AI package. -->
+    <MicrosoftWindowsAppSDKAIExperimentalVersion>2.5.4-experimental</MicrosoftWindowsAppSDKAIExperimentalVersion>
+  </PropertyGroup>
 
   <ItemGroup Label="Analyzers and generators">
     <!-- Pinned to the Roslyn version shipped with the .NET 8 SDK so the analyzers load in every supported SDK. -->

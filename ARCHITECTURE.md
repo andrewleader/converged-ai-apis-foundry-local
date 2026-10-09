@@ -12,7 +12,7 @@ await model.EnsureReadyAsync();
 using IChatClient chat = await model.CreateClientAsync();
 ```
 
-To make that work, the code is split into four kinds of packages:
+To make that work, the code is split into five kinds of packages:
 
 ```mermaid
 flowchart TD
@@ -29,7 +29,8 @@ flowchart TD
 | **Core** | `Microsoft.AI.Local` | Everything every task shares: `ILocalModel` (availability, download progress, `EnsureReadyAsync`), `ImageFrame`, errors, `LocalModel.SelectFirstAvailableAsync`, and the model catalog. Also ships the build-time generator and analyzers. | Only `Microsoft.Extensions.*.Abstractions` |
 | **Task contract** (11) | `Microsoft.AI.Local.TextGeneration` | One task's API: model interface (`ITextGenerationModel`), client contract, options and results, the catalog class (`LanguageModels`), and DI helpers. | Core |
 | **Provider infrastructure** (2) | `Microsoft.AI.Local.Foundry`, `Microsoft.AI.Local.Windows` | Plumbing shared by all of a provider's tasks: the Foundry Local runtime, the Phi Silica unlock, identity checks, options, and base classes. **No models.** | Core and the provider's SDK |
-| **Task provider** (9 Windows + 3 Foundry) | `Microsoft.AI.Local.TextGeneration.Foundry` | The models of one task from one provider. | Its task contract and its provider infrastructure |
+| **Task provider** (10 Windows + 3 Foundry) | `Microsoft.AI.Local.TextGeneration.Foundry` | The models of one task from one provider. | Its task contract and its provider infrastructure |
+| **Building block** (1) | `Microsoft.AI.Local.Audio` | Media plumbing some tasks share but no model owns: microphone capture, live audio streams, WAV decoding and resampling. | Nothing |
 
 Why split this way:
 
@@ -64,6 +65,25 @@ A handle lives in a **task** package, but its implementation lives in a **provid
 
 **Safety net at build time:** analyzer `MSAILOCAL201` warns at each use of a handle whose provider package the app doesn't reference. It only checks executables, because libraries may leave the choice of provider to the app.
 
+## Audio input: capture is separate from recognition
+
+Speech models need audio, but where the audio comes from (a file, a microphone, a call) has nothing to do with which model transcribes it. So capture lives in its own package, [Microsoft.AI.Local.Audio](src/Microsoft.AI.Local.Audio), and every source reaches every model through one standard format: **a WAV stream**.
+
+```
+ Audio sources                                   Speech models (ISpeechToTextClient)
+ ─────────────                                   ───────────────────────────────────
+ File / MemoryStream (WAV, MP3, ...)  ──┐
+ Microphone.StartAsync() (Windows)    ──┼─ Stream ─►  SpeechToTextModels.WindowsDefault
+ PushAudioStream (app-fed audio)      ──┘             SpeechToTextModels.WhisperTiny, ...
+```
+
+- **A live source is just a `Stream`.** `MicrophoneStream` and `PushAudioStream` derive from `LiveAudioStream`: a WAV header whose length is "unknown", followed by audio as it's produced. The stream ends when the app calls `Stop()` or `Complete()`. Because the stream is plain WAV, it's the same `Stream` parameter that Microsoft.Extensions.AI's `ISpeechToTextClient` already takes, so no new client API is needed, and even speech clients outside this library can consume it.
+- **Providers read audio the same way.** `AudioInput` examines any stream (container, format, live or not), and `PcmAudioReader` converts it to the 16-bit PCM format the model needs (resampling and mixing channels) as the audio arrives.
+- **Each model uses what it supports.** The Windows recognizer pushes PCM into its native streaming recognizer, so live audio gets partial results while the user speaks. Foundry models stream live audio into an `AudioSession`, and fall back to transcribing the whole audio when the stream ends if a model can't transcribe live. Every source works with every model either way.
+- **Platform code stays at the edge.** Only `Microphone` is platform-specific (Windows uses an `AudioGraph`, in `*.Windows.cs`). Adding capture for another platform, or another source such as a network stream, doesn't touch any model package.
+
+The Windows speech model is **experimental**: it's the only package that depends on the experimental Windows App SDK (`Microsoft.WindowsAppSDK.AI` 2.5.4-experimental). The other Windows packages require a *lower* stable version (2.4.4), so NuGet picks the experimental build in apps that use speech, and the stable one everywhere else. If something forces a stable version anyway, build warning `MSAILOCAL104` and a `MissingAppRequirement` explain why.
+
 ## What a provider package implements
 
 The generator writes the descriptors and the registration code. The provider package itself writes only two things:
@@ -73,7 +93,7 @@ The generator writes the descriptors and the registration code. The provider pac
 
 | Provider | Base class to derive from | Notes |
 |---|---|---|
-| Windows | `WindowsModelBase<TClient>` (or `WindowsLanguageModelBase<TClient>` for models that run on Phi Silica) | Implement the native ready check, the native `EnsureReadyAsync`, and client creation. Put that code in `*.Windows.cs` files. A `*.Portable.cs` factory returns `WindowsUnsupportedModel<TClient>` for the `net8.0` build, which reports `NotSupportedOnPlatform`. |
+| Windows | `WindowsModelBase<TClient>` (or `WindowsLanguageModelBase<TClient>` for models that run on Phi Silica) | Implement the native ready check, the native `EnsureReadyAsync`, and client creation. Optionally override `CheckModelRequirements` and `TryMapException` for model-specific requirements (the speech model checks the Windows build and the experimental SDK). Put that code in `*.Windows.cs` files. A `*.Portable.cs` factory returns `WindowsUnsupportedModel<TClient>` for the `net8.0` build, which reports `NotSupportedOnPlatform`. |
 | Foundry | `FoundryModelHandle<TClient>` | Implement `CreateClient(variant, lease)`. Initialization, execution-provider and model download, loading, `WithDevice`, and unloading are inherited. |
 
 All providers end up on `LocalModelBase<TClient>` in the core. It provides the behavior every model shares: concurrent `EnsureReadyAsync` calls are merged into one download, cancellation is reference-counted across callers, progress is normalized, and logging and telemetry are built in.
@@ -95,10 +115,12 @@ Versions are in [eng/Versions.props](eng/Versions.props), one version per task f
 
 **Add a model:** add an entry to the provider's manifest in [eng/catalog](eng/catalog). The task's catalog class and the provider's descriptors pick it up on the next build. If the provider package needs model-specific behavior, handle it in its `<Provider>ModelFactory.Create`.
 
-**Add a provider for an existing task** (for example, Windows speech-to-text):
+**Add a provider for an existing task** (Microsoft.AI.Local.SpeechToText.Windows is a recent example):
 1. Add the models to that provider's manifest.
-2. Create `src/Microsoft.AI.Local.SpeechToText.Windows/` with a `.csproj` (description only) and a `WindowsModelFactory` plus model classes.
+2. Create `src/Microsoft.AI.Local.<Task>.<Provider>/` with a `.csproj` (description only) and a `<Provider>ModelFactory` plus model classes.
 3. Add the project to [Microsoft.AI.Local.slnx](Microsoft.AI.Local.slnx).
+
+**Add an audio source** (a platform's microphone, a network stream, ...): implement it in [Microsoft.AI.Local.Audio](src/Microsoft.AI.Local.Audio) as a `LiveAudioStream`. Every speech model accepts it without changes.
 
 **Add a task:**
 1. Create `src/Microsoft.AI.Local.<Task>/` with the model interface, the client contract and an empty `public static partial class <Task>Models`.
@@ -116,10 +138,11 @@ Versions are in [eng/Versions.props](eng/Versions.props), one version per task f
 src/
   Microsoft.AI.Local/                     core
   Microsoft.AI.Local.<Task>/              task contract packages (11)
-  Microsoft.AI.Local.<Task>.Windows/      Windows task providers (9)
+  Microsoft.AI.Local.<Task>.Windows/      Windows task providers (10)
   Microsoft.AI.Local.<Task>.Foundry/      Foundry task providers (3)
   Microsoft.AI.Local.Windows/             Windows provider infrastructure
   Microsoft.AI.Local.Foundry/             Foundry provider infrastructure
+  Microsoft.AI.Local.Audio/               microphone capture, live audio streams, WAV and resampling
   Microsoft.AI.Local.Analyzers/           provider-registration generator + analyzers (shipped inside the core)
   Microsoft.AI.Local.Catalog.Generators/  catalog generator (build-time only, not shipped)
   Shared/                                 internal helpers compiled into task packages
@@ -127,9 +150,9 @@ eng/
   catalog/<provider>-models.json          the model lists
   Versions.props                          one version per task family
 tests/
-  Microsoft.AI.Local.Tests/               runs like an app: catalog binding, registration, placeholders
+  Microsoft.AI.Local.Tests/               runs like an app: catalog binding, registration, placeholders, audio, speech clients
   Microsoft.AI.Local.Analyzers.Tests/     generator and analyzer tests on in-memory compilations
-pack.ps1                                  builds all 26 packages into artifacts/packages
+pack.ps1                                  builds all 28 packages into artifacts/packages
 ```
 
 ## Build, test, pack

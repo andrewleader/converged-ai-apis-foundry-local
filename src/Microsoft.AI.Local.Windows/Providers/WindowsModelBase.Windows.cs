@@ -45,6 +45,21 @@ public abstract class WindowsModelBase<TClient> : LocalModelBase<TClient>
     /// <returns>The client.</returns>
     protected abstract Task<TClient> CreateNativeClientAsync(CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Checks requirements specific to this model (for example a minimum Windows build or Windows App SDK channel)
+    /// before package identity and the native ready state. Must be cheap.
+    /// </summary>
+    /// <returns><see langword="null"/> when the requirements are met; otherwise the availability to report.</returns>
+    protected virtual ModelAvailability? CheckModelRequirements() => null;
+
+    /// <summary>
+    /// Maps an exception thrown by the native API to an availability when it means the model can't run here (for
+    /// example a missing Windows App SDK runtime). The default handles the failures shared by all Windows AI APIs.
+    /// </summary>
+    /// <param name="exception">The exception.</param>
+    /// <returns>The availability, or <see langword="null"/> if the exception is a real error.</returns>
+    protected virtual ModelAvailability? TryMapException(Exception exception) => WindowsAppRequirements.TryMapException(exception);
+
     /// <inheritdoc/>
     protected override ValueTask<ModelAvailability> GetAvailabilityCoreAsync(CancellationToken cancellationToken) => new(CheckAvailability());
 
@@ -70,7 +85,7 @@ public abstract class WindowsModelBase<TClient> : LocalModelBase<TClient>
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            if (WindowsAppRequirements.TryMapException(ex) is { } mapped)
+            if (TryMapException(ex) is { } mapped)
             {
                 return mapped;
             }
@@ -99,7 +114,7 @@ public abstract class WindowsModelBase<TClient> : LocalModelBase<TClient>
         {
             return await CreateNativeClientAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException and not LocalModelException && WindowsAppRequirements.TryMapException(ex) is { } mapped)
+        catch (Exception ex) when (ex is not OperationCanceledException and not LocalModelException && TryMapException(ex) is { } mapped)
         {
             throw new LocalModelNotSupportedException(mapped, Id);
         }
@@ -110,6 +125,11 @@ public abstract class WindowsModelBase<TClient> : LocalModelBase<TClient>
         if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
         {
             return new ModelAvailability(ModelAvailabilityStatus.NotSupportedOnPlatform, "Windows AI APIs require Windows 11.");
+        }
+
+        if (CheckModelRequirements() is { } unmet)
+        {
+            return unmet;
         }
 
         if (!WindowsAppRequirements.HasPackageIdentity)
@@ -135,7 +155,7 @@ public abstract class WindowsModelBase<TClient> : LocalModelBase<TClient>
                 _ => new(ModelAvailabilityStatus.NotSupportedOnDevice, "The model isn't supported on this system."),
             };
         }
-        catch (Exception ex) when (WindowsAppRequirements.TryMapException(ex) is { } mapped)
+        catch (Exception ex) when (TryMapException(ex) is { } mapped)
         {
             return mapped;
         }

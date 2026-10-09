@@ -12,7 +12,7 @@ This package has no native dependencies and contains no task APIs or models. Eac
 |---|---|---|
 | `Microsoft.AI.Local.TextGeneration` | `LanguageModels` | `.TextGeneration.Windows`, `.TextGeneration.Foundry` |
 | `Microsoft.AI.Local.TextEmbedding` | `TextEmbeddingModels` | `.TextEmbedding.Foundry` |
-| `Microsoft.AI.Local.SpeechToText` | `SpeechToTextModels` | `.SpeechToText.Foundry` |
+| `Microsoft.AI.Local.SpeechToText` | `SpeechToTextModels` | `.SpeechToText.Windows` (experimental), `.SpeechToText.Foundry` |
 | `Microsoft.AI.Local.TextSummarization` | `TextSummarizationModels` | `.TextSummarization.Windows` |
 | `Microsoft.AI.Local.TextRewrite` | `TextRewriteModels` | `.TextRewrite.Windows` |
 | `Microsoft.AI.Local.TextToTable` | `TextToTableModels` | `.TextToTable.Windows` |
