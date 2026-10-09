@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microsoft.AI.Local model catalog</title>
+  <meta name="description" content="Browse every local AI model available through Microsoft.AI.Local: Foundry Local and Windows AI APIs models, with install and code snippets.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#/">
+        <span class="brand-mark" aria-hidden="true">◆</span>
+        <span>Microsoft.AI.Local <span class="muted">models</span></span>
+      </a>
+      <nav class="header-nav" aria-label="Main">
+        <a href="#/" data-nav="models">All models</a>
+        <a href="#/tasks" data-nav="tasks">By task</a>
+        <a href="#/start" data-nav="start">Get started</a>
+        <a href="https://github.com/andrewleader/converged-ai-apis-foundry-local">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="app" class="wrap" tabindex="-1">
+    <p class="loading">Loading the model catalog…</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      Generated from the provider manifests in
+      <a href="https://github.com/andrewleader/converged-ai-apis-foundry-local/tree/main/eng/catalog"><code>eng/catalog</code></a>,
+      the same source the <code>Microsoft.AI.Local</code> catalog classes are generated from.
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
