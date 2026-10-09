@@ -20,6 +20,7 @@ internal sealed class WindowsSpeechRecognitionModel(LocalModelDescriptor descrip
     : WindowsModelBase<ISpeechToTextClient>(descriptor, usesLanguageModel: false), ISpeechToTextModel
 {
     private const int ClassNotRegistered = unchecked((int)0x80040154);
+    private const int FacilityWeb = 0x375;
 
     private static readonly ModelAvailability ExperimentalSdkMissing = new(
         ModelAvailabilityStatus.MissingAppRequirement,
@@ -41,8 +42,56 @@ internal sealed class WindowsSpeechRecognitionModel(LocalModelDescriptor descrip
     {
         // The projection is present but the runtime has no speech classes: a stable Windows App SDK runtime.
         COMException { HResult: ClassNotRegistered } or TypeLoadException or FileNotFoundException => ExperimentalSdkMissing,
+
+        // WEB_E_JSON_* (for example 0x83750009, "JSON value not found"): the speech API couldn't resolve a model package
+        // for this device. Its EnsureReadyAsync doesn't complete in that state, so report it instead of trying.
+        COMException com when ((com.HResult >> 16) & 0x1FFF) == FacilityWeb => ModelPackageUnavailable(com),
         _ => base.TryMapException(exception),
     };
+
+    private static ModelAvailability ModelPackageUnavailable(COMException exception) => new(
+        ModelAvailabilityStatus.NotSupportedOnDevice,
+        $"The experimental Windows speech API couldn't find a speech recognition model for this device ({Describe(exception)}). " +
+        "Windows delivers the model as a separate package for the device's NPU or CPU; this error means none is available for this " +
+        "device, locale or Windows build, so the app can't fix it. Use another speech model on this device. " +
+        $"Diagnostics: {Diagnose()}.");
+
+    private static string Describe(Exception exception)
+    {
+        var message = exception.Message.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim();
+        return $"0x{exception.HResult:X8}{(string.IsNullOrEmpty(message) ? string.Empty : ": " + message)}";
+    }
+
+    // Asks the speech API about each device it supports, to show which part of model resolution fails.
+    private static string Diagnose()
+    {
+        string locale;
+        try
+        {
+            locale = SpeechRecognitionModelFactoryOptions.DefaultLocale;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException)
+        {
+            return $"locale unavailable ({Describe(ex)})";
+        }
+
+        var results = new List<string> { $"locale {locale}" };
+        foreach (var device in (ReadOnlySpan<AIComputeDevice>)[AIComputeDevice.NPU, AIComputeDevice.CPU])
+        {
+            try
+            {
+                var factory = new SpeechRecognitionModelFactory(new SpeechRecognitionModelFactoryOptions(locale, [device]));
+                results.Add($"{device} {factory.GetReadyState()}");
+            }
+            catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException)
+            {
+                results.Add($"{device} error {Describe(ex)}");
+            }
+        }
+
+        results.Add($"Windows {Environment.OSVersion.Version}, {RuntimeInformation.ProcessArchitecture}");
+        return string.Join("; ", results);
+    }
 
     protected override AIFeatureReadyState GetNativeReadyState() => SpeechRecognitionModelFactory.Default.GetReadyState();
 
