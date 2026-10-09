@@ -119,11 +119,7 @@ internal sealed partial class FoundryLocalRuntime(Func<FoundryProviderOptions> o
             var o = options();
             var configuration = new Configuration
             {
-                AppName = o.AppName ?? DefaultAppName(),
-                AppDataDir = o.AppDataDirectory,
-                ModelCacheDir = o.ModelCacheDirectory,
-                LogsDir = o.LogsDirectory,
-                CatalogRegion = o.CatalogRegion,
+                AppName = o.AppName ?? DefaultAppName()
             };
 
             try
