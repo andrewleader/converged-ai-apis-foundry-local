@@ -41,7 +41,7 @@ The models come from the manifests in [eng/catalog](eng/catalog), and package ve
 
 ## Model catalog website
 
-[`site/`](site) is a static website that lists every model in the manifests, with search, filters (task, provider, operating system and platform RID, cross-platform validation, capabilities, context length, publisher), a view by task, and install and code snippets for each model. It reads `eng/catalog/*-models.json` at run time, so adding a model to a manifest is all it takes to publish it.
+[`site/`](site) is a static, task-first website for every model in the manifests. The home page lists the tasks (speech to text, text generation, …), filterable by search and by the platform the app runs on; each task page lists its models with filters (operating system and platform RID, cross-platform validation, capabilities, context length, publisher) and install and code snippets, and each model has its own page. Models from every manifest are presented as one converged catalog. It reads `eng/catalog/*-models.json` at run time, so adding a model to a manifest is all it takes to publish it.
 
 The [Deploy model catalog site](.github/workflows/pages.yml) workflow publishes it to GitHub Pages on every push to `main` that changes `site/` or `eng/catalog/`. Enable it once in **Settings > Pages** by setting **Source** to **GitHub Actions**.
 
