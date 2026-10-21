@@ -45,7 +45,7 @@ public class ModelCatalogTests
     [Fact]
     public async Task WindowsModelsReportNotSupportedOnPlatformInPortableApps()
     {
-        // This test project targets net8.0, so it gets the platform-neutral build of the Windows provider packages.
+        // This test project targets net8.0, so it gets the platform-neutral build of the task packages, where Windows models report NotSupportedOnPlatform.
         var availability = await LanguageModels.PhiSilica.GetAvailabilityAsync(TestContext.Current.CancellationToken);
         Assert.Equal(ModelAvailabilityStatus.NotSupportedOnPlatform, availability.Status);
         await Assert.ThrowsAsync<LocalModelNotSupportedException>(() => LanguageModels.PhiSilica.CreateClientAsync(TestContext.Current.CancellationToken));

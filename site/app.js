@@ -150,7 +150,7 @@
 
   const PROVIDER_INFO = {
     Foundry: {
-        blurb: 'Downloaded on first use and run in-process. One net8.0 package for Windows, macOS and Linux.',
+      blurb: 'Downloaded on first use and run in-process on Windows, macOS and Linux.',
       requirements: [
         'Target net8.0 or later; the same package runs on Windows, macOS (Apple silicon) and Linux.',
         'The model downloads on first use (EnsureReadyAsync reports progress); make sure the device has the disk space and memory for it.',
@@ -261,7 +261,7 @@
 
   // ---------- data ----------
   // The catalog is converged: models from every source are presented together, grouped by task. The source a model
-  // comes from (m.provider) is only used internally to pick its package, requirements and code snippets.
+  // comes from (m.provider) is only used internally to pick its requirements and code snippets.
 
   async function fetchJson(path) {
     const res = await fetch(path, { cache: 'no-cache' });
@@ -321,8 +321,7 @@
           maxOutputTokens: typeof caps.maxOutputTokens === 'number' ? caps.maxOutputTokens : null,
           retired: raw.retired || null,
           handle: `${task.catalogClass}.${raw.property}`,
-          package: `Microsoft.AI.Local.${task.segment}.${p.name}`,
-          taskPackage: `Microsoft.AI.Local.${task.segment}`,
+          package: `Microsoft.AI.Local.${task.segment}`,
         });
       }
     }
@@ -697,7 +696,7 @@
     if (t.adapter) {
       snippetTabs.push({
         label: 'Any chat model', content: codeBlock([
-          usings(t), '', '// Requires the package of the chat model you use (here Microsoft.AI.Local.TextGeneration.Foundry).',
+          usings(t), '', '// Requires Microsoft.AI.Local.TextGeneration for the chat model.',
           `${t.modelInterface} model = ${t.adapter};`, '', 'await model.EnsureReadyAsync();', ...t.usage].join('\n'), 'C#'),
       });
     }
@@ -798,7 +797,7 @@
         [['grid', 'Cards'], ['table', 'Table']].map(([k, label]) =>
           h('button', { type: 'button', class: 'seg-btn', 'aria-pressed': f.view === k ? 'true' : 'false', onclick: () => { f.view = k; rerender(); } }, label))));
 
-    const packages = [...new Set(live.map(m => m.package))];
+    const packages = [`Microsoft.AI.Local.${t.segment}`];
     const snippetTabs = taskSnippets(t, all);
     const groups = [...new Set(live.map(m => m.provider))];
 
@@ -824,7 +823,7 @@
           h('p', { class: 'small muted' }, 'Code written against the task works with every model of the task; switching models changes one line. ',
             h('a', { href: `${REPO_URL}/tree/main/src/Microsoft.AI.Local.${t.segment}` }, 'Task package source'), '.'),
           h('h3', null, 'Install'),
-          h('p', { class: 'small muted' }, 'Each model page names the package that provides it. To use every model of this task:'),
+          h('p', { class: 'small muted' }, 'One package provides every model of this task:'),
           tabs([
             { label: '.NET CLI', content: codeBlock(installCli(packages), 'shell') },
             { label: 'PackageReference', content: codeBlock(packageReferences(packages), 'XML') },
@@ -870,8 +869,6 @@
     if (t.liveUsage) codeTabs.push({ label: 'Live audio', content: codeBlock(liveSnippet(m), 'C#') });
     if (t.di) codeTabs.push({ label: 'Dependency injection', content: codeBlock(diSnippet(m), 'C#') });
 
-    const fallbackPackages = [...new Set(fallbackPartners.map(x => x.package))].filter(p => p !== m.package);
-
     app.replaceChildren(
       h('nav', { class: 'crumbs', 'aria-label': 'Breadcrumb' },
         h('a', { href: '#/' }, 'Tasks'), ' / ', h('a', { href: taskHref(t) }, t.text), ' / ', m.displayName),
@@ -893,7 +890,6 @@
             h('tr', null, h('th', { scope: 'row' }, 'Catalog handle'), h('td', null, h('code', null, m.handle), copyButton(() => m.handle))),
             h('tr', null, h('th', { scope: 'row' }, 'Alias'), h('td', null, h('code', null, m.alias))),
             h('tr', null, h('th', { scope: 'row' }, 'Package'), h('td', null, h('code', null, m.package))),
-            h('tr', null, h('th', { scope: 'row' }, 'Task package'), h('td', null, h('code', null, m.taskPackage))),
             h('tr', null, h('th', { scope: 'row' }, 'Model interface'), h('td', null, h('code', null, t.modelInterface))),
             h('tr', null, h('th', { scope: 'row' }, 'Client'), h('td', null, h('code', null, t.clientType))),
             m.publisher ? h('tr', null, h('th', { scope: 'row' }, 'Publisher'), h('td', null, m.publisher)) : null)),
@@ -935,15 +931,13 @@
             { label: 'PackageReference', content: codeBlock(packageReferences([m.package]), 'XML') },
             { label: 'Project file', content: codeBlock(projectFile(m), 'XML') },
           ]),
-          h('p', { class: 'small muted' }, `${m.package} brings in ${m.taskPackage} and the core Microsoft.AI.Local package. `,
+          h('p', { class: 'small muted' }, `${m.package} provides every ${t.text.toLowerCase()} model and brings in the core Microsoft.AI.Local package. `,
             'Until the packages are on NuGet.org, build them with ', h('code', null, 'pack.ps1'), ' and add ',
             h('code', null, '--source <repo>/artifacts/packages'), '.'),
           t.livePackage ? h('p', { class: 'small muted' }, 'For live audio (microphone capture or a PushAudioStream), also add ',
             h('code', null, t.livePackage), '.') : null,
           h('h2', null, 'Code'),
-          tabs(codeTabs),
-          fallbackPackages.length ? h('p', { class: 'small muted' }, 'The fallback example also needs ',
-            fallbackPackages.map((p, i) => [i ? ', ' : '', h('code', null, p)]), '.') : null)),
+          tabs(codeTabs))),
 
       others.length ? h('section', null,
         h('h2', null, `Other ${t.text.toLowerCase()} models`),
@@ -956,7 +950,7 @@
     setTitle('Get started');
     const phi = catalog.models.find(m => m.handle === 'LanguageModels.Phi4Mini') || catalog.models.find(m => m.task.name === 'text-generation');
     const silica = catalog.models.find(m => m.handle === 'LanguageModels.PhiSilica');
-    const packages = [...new Set([silica, phi].filter(Boolean).map(m => m.package))];
+    const packages = ['Microsoft.AI.Local.TextGeneration'];
     app.replaceChildren(
       h('section', { class: 'hero' }, h('h1', null, 'Get started'),
         h('p', { class: 'lead' }, 'Microsoft.AI.Local gives every local model a strongly-typed handle in a per-task catalog class. Code against the task once; the handle is the only model-specific line.')),
@@ -965,17 +959,17 @@
           h('p', null, h('a', { href: '#/' }, 'Browse the tasks'), ' and pick the platforms your app runs on to see only what works there. ',
             'Each task lists its models with filters for platform, capabilities and more; ', h('strong', null, 'Cross-platform validated'),
             ' models are tested on Windows and macOS by the conformance suite.')),
-        h('li', null, h('h2', null, 'Add the model\'s package'),
-          h('p', null, 'Each model page names the package to reference, and that package brings in everything else the task needs. For example, for ',
+        h('li', null, h('h2', null, 'Add the task\'s package'),
+          h('p', null, 'Each task has one package that provides all of its models and brings in everything else they need. For example, for ',
             phi ? h('code', null, phi.handle) : 'a chat model', silica ? [' and ', h('code', null, silica.handle)] : null, ':'),
-          codeBlock(installCli(packages.length ? packages : ['Microsoft.AI.Local.TextGeneration.Foundry']), 'shell'),
+          codeBlock(installCli(packages), 'shell'),
           h('p', { class: 'small muted' }, 'Building from source? Run ', h('code', null, '.\\pack.ps1'), ' at the repository root and add ',
             h('code', null, '--source <repo>\\artifacts\\packages'), ' to the commands above.')),
         h('li', null, h('h2', null, 'Write the code once'),
           h('p', null, 'Use the model built into Windows on Copilot+ PCs, and fall back to a cross-platform model everywhere else:'),
           phi && silica ? codeBlock(fallbackSnippet(silica, [phi]), 'C#') : (phi ? codeBlock(quickStart(phi), 'C#') : null),
-          h('p', null, 'Using a handle whose package isn\'t referenced is a build warning (', h('code', null, 'MSAILOCAL201'),
-            ') and reports ', h('code', null, 'MissingAppRequirement'), ' at run time, never an exception.')),
+          h('p', null, 'A model that can\'t run on the current device reports why through ', h('code', null, 'GetAvailabilityAsync'),
+            ' (for example ', h('code', null, 'NotSupportedOnPlatform'), '), never an exception.')),
         h('li', null, h('h2', null, 'Learn more'),
           h('ul', null,
             h('li', null, h('a', { href: `${REPO_URL}#readme` }, 'Repository README')),

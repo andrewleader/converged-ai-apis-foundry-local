@@ -1,8 +1,7 @@
 <Project>
   <!--
-    Package versions. Every task family (a task contract package and its provider packages) versions independently,
-    so a breaking change in one task's API (for example TextGeneration) doesn't touch another (for example
-    ImageTextRecognition). A task provider package always ships with the same version as its task contract package.
+    Package versions. Every task package versions independently, so a breaking change in one task's API (for example
+    TextGeneration) doesn't touch another (for example ImageTextRecognition).
     VersionSuffix is shared (Directory.Build.props) and can be overridden with the VersionSuffix parameter of pack.ps1.
   -->
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Microsoft.AI.Local'">
