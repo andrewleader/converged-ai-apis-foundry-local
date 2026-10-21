@@ -12,28 +12,30 @@
   </PropertyGroup>
 
   <!--
-    Package conventions (see PROPOSAL.md §7). The project name says what a project is:
-      Microsoft.AI.Local.<Task>             task contract package: model interface, client contract, catalog class
-      Microsoft.AI.Local.<Task>.<Provider>  task provider package: implements <Task> for <Provider>
-    LocalAITask and LocalAIProvider drive the references, target frameworks, catalog generation and versions below and
-    in Directory.Build.targets, so those projects only declare their description.
+    Package conventions (see PROPOSAL.md §7). A project named Microsoft.AI.Local.<Task> is a task package: the task's
+    API, its catalog class, and every provider's models of that task. LocalAIWindowsTasks and LocalAIFoundryTasks list
+    the tasks each provider implements (they must match the manifests in eng/catalog). LocalAITask and LocalAIProviders
+    drive the references, target frameworks, catalog generation and versions below and in Directory.Build.targets, so
+    task projects only declare their description.
   -->
   <PropertyGroup>
     <LocalAITasks>TextGeneration;TextEmbedding;SpeechToText;TextSummarization;TextRewrite;TextToTable;ImageTextRecognition;ImageDescription;ImageScaling;ImageSegmentation;ImageObjectRemoval</LocalAITasks>
+    <LocalAIWindowsTasks>TextGeneration;SpeechToText;TextSummarization;TextRewrite;TextToTable;ImageTextRecognition;ImageDescription;ImageScaling;ImageSegmentation;ImageObjectRemoval</LocalAIWindowsTasks>
+    <LocalAIFoundryTasks>TextGeneration;TextEmbedding;SpeechToText</LocalAIFoundryTasks>
     <_LocalAIName Condition="$(MSBuildProjectName.StartsWith('Microsoft.AI.Local.'))">$(MSBuildProjectName.Substring(19))</_LocalAIName>
-    <_LocalAIDot>$(_LocalAIName.IndexOf('.'))</_LocalAIDot>
-    <_LocalAISegment Condition="'$(_LocalAIDot)' == '-1'">$(_LocalAIName)</_LocalAISegment>
-    <_LocalAISegment Condition="'$(_LocalAIDot)' != '-1'">$(_LocalAIName.Substring(0, $(_LocalAIDot)))</_LocalAISegment>
-    <LocalAITask Condition="'$(_LocalAISegment)' != '' and $([System.String]::Copy(';$(LocalAITasks);').Contains(';$(_LocalAISegment);'))">$(_LocalAISegment)</LocalAITask>
-    <LocalAIProvider Condition="'$(LocalAITask)' != '' and '$(_LocalAIDot)' != '-1'">$(_LocalAIName.Substring($([MSBuild]::Add($(_LocalAIDot), 1))))</LocalAIProvider>
+    <LocalAITask Condition="'$(_LocalAIName)' != '' and $([System.String]::Copy(';$(LocalAITasks);').Contains(';$(_LocalAIName);'))">$(_LocalAIName)</LocalAITask>
+    <LocalAIUsesWindows Condition="'$(LocalAITask)' != '' and $([System.String]::Copy(';$(LocalAIWindowsTasks);').Contains(';$(LocalAITask);'))">true</LocalAIUsesWindows>
+    <LocalAIUsesFoundry Condition="'$(LocalAITask)' != '' and $([System.String]::Copy(';$(LocalAIFoundryTasks);').Contains(';$(LocalAITask);'))">true</LocalAIUsesFoundry>
+    <!-- Comma-separated: it reaches the catalog generator through .editorconfig, where ';' starts a comment. -->
+    <LocalAIProviders Condition="'$(LocalAIUsesFoundry)' == 'true'">Foundry</LocalAIProviders>
+    <LocalAIProviders Condition="'$(LocalAIUsesWindows)' == 'true'">$(LocalAIProviders),Windows</LocalAIProviders>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(LocalAITask)' != ''">
-    <RootNamespace Condition="'$(LocalAIProvider)' == ''">Microsoft.AI.Local</RootNamespace>
-    <RootNamespace Condition="'$(LocalAIProvider)' != ''">Microsoft.AI.Local.$(LocalAIProvider)</RootNamespace>
-    <TargetFramework Condition="'$(LocalAIProvider)' != 'Windows'">$(PortableTargetFramework)</TargetFramework>
-    <!-- Windows providers also build for net8.0, where every model reports NotSupportedOnPlatform (PROPOSAL.md §9). -->
-    <TargetFrameworks Condition="'$(LocalAIProvider)' == 'Windows'">$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
+    <RootNamespace>Microsoft.AI.Local</RootNamespace>
+    <TargetFramework Condition="'$(LocalAIUsesWindows)' != 'true'">$(PortableTargetFramework)</TargetFramework>
+    <!-- Tasks with Windows models also build for net8.0, where those models report NotSupportedOnPlatform (PROPOSAL.md §9). -->
+    <TargetFrameworks Condition="'$(LocalAIUsesWindows)' == 'true'">$(PortableTargetFramework);$(WindowsTargetFramework)</TargetFrameworks>
   </PropertyGroup>
 
   <!-- TargetFramework is a global property in each inner build, so Windows-only settings can be applied here. -->

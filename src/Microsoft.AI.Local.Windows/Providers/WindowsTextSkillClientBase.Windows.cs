@@ -3,7 +3,7 @@ using Microsoft.Windows.AI.Text;
 namespace Microsoft.AI.Local.Windows.Providers;
 
 /// <summary>The base class of the clients that wrap a Phi Silica text skill (summarizer, rewriter, ...).</summary>
-/// <remarks>This type is intended for Windows task provider packages.</remarks>
+/// <remarks>This type is intended for the task packages that implement Windows models.</remarks>
 public abstract class WindowsTextSkillClientBase : ILocalAIClient
 {
     private readonly object _native;

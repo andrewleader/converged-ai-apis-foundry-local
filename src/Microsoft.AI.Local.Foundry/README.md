@@ -1,6 +1,6 @@
 # Microsoft.AI.Local.Foundry
 
-The shared infrastructure of the [Foundry Local](https://github.com/microsoft/Foundry-Local) providers for [Microsoft.AI.Local](https://www.nuget.org/packages/Microsoft.AI.Local), on **Windows, macOS (Apple silicon) and Linux**. **It contains no models**: reference the Foundry package of each task you use, for example `Microsoft.AI.Local.TextGeneration.Foundry`, `Microsoft.AI.Local.TextEmbedding.Foundry` or `Microsoft.AI.Local.SpeechToText.Foundry`. They bring this package in.
+The shared infrastructure of the [Foundry Local](https://github.com/microsoft/Foundry-Local) providers for [Microsoft.AI.Local](https://www.nuget.org/packages/Microsoft.AI.Local), on **Windows, macOS (Apple silicon) and Linux**. **It contains no models**: reference the package of each task you use, for example `Microsoft.AI.Local.TextGeneration`, `Microsoft.AI.Local.TextEmbedding` or `Microsoft.AI.Local.SpeechToText`. They bring this package in.
 
 It holds the Foundry Local runtime the task packages share: lazy, thread-safe initialization, execution-provider download, model download, load and unload.
 

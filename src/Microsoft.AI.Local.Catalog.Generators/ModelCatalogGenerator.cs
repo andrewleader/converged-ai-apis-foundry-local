@@ -11,14 +11,11 @@ using Microsoft.CodeAnalysis.Text;
 namespace Microsoft.AI.Local.Catalog.Generators;
 
 /// <summary>
-/// Generates the model catalog from the provider manifests (<c>eng/catalog/&lt;provider&gt;-models.json</c>, passed as
-/// AdditionalFiles). The MSBuild properties <c>LocalAITask</c> and <c>LocalAIProvider</c> select the output:
-/// <list type="bullet">
-/// <item>Task package (<c>LocalAITask</c> only, for example Microsoft.AI.Local.TextGeneration): the task's catalog class
-/// members (<c>LanguageModels.PhiSilica</c>, ...), the catalog entries, and the placeholder handle type.</item>
-/// <item>Task provider package (both, for example Microsoft.AI.Local.TextGeneration.Foundry): the internal
-/// <c>&lt;Provider&gt;ModelDescriptors</c> class with the descriptors of the provider's models for that task.</item>
-/// </list>
+/// Generates a task package's model catalog from the provider manifests (<c>eng/catalog/&lt;provider&gt;-models.json</c>,
+/// passed as AdditionalFiles). The MSBuild property <c>LocalAITask</c> selects the task (for example TextGeneration), and
+/// <c>LocalAIProviders</c> lists the providers whose implementations the package contains (for example
+/// <c>Foundry,Windows</c>). The output is the task's catalog class members (<c>LanguageModels.PhiSilica</c>, ...), each
+/// bound to the in-package <c>&lt;Provider&gt;ModelFactory.Create(LocalModelDescriptor)</c> of its provider.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class ModelCatalogGenerator : IIncrementalGenerator
@@ -48,7 +45,7 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
     internal static readonly DiagnosticDescriptor UnsupportedOutput = new(
         "MSAILOCALGEN003",
         "Unsupported model catalog output",
-        "Can't generate the model catalog for LocalAITask '{0}' and LocalAIProvider '{1}': {2}",
+        "Can't generate the model catalog for LocalAITask '{0}' and LocalAIProviders '{1}': {2}",
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -63,12 +60,12 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
 
         var output = context.AnalyzerConfigOptionsProvider.Select(static (options, _) => (
             Task: options.GlobalOptions.TryGetValue("build_property.LocalAITask", out var task) ? task.Trim() : string.Empty,
-            Provider: options.GlobalOptions.TryGetValue("build_property.LocalAIProvider", out var provider) ? provider.Trim() : string.Empty));
+            Providers: options.GlobalOptions.TryGetValue("build_property.LocalAIProviders", out var providers) ? providers.Trim() : string.Empty));
 
-        context.RegisterSourceOutput(manifests.Combine(output), static (spc, input) => Execute(spc, input.Left, input.Right.Task, input.Right.Provider));
+        context.RegisterSourceOutput(manifests.Combine(output), static (spc, input) => Execute(spc, input.Left, input.Right.Task, input.Right.Providers));
     }
 
-    private static void Execute(SourceProductionContext context, ImmutableArray<ManifestText> files, string taskSegment, string providerName)
+    private static void Execute(SourceProductionContext context, ImmutableArray<ManifestText> files, string taskSegment, string providerList)
     {
         if (taskSegment.Length == 0 || files.IsDefaultOrEmpty)
         {
@@ -78,7 +75,7 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
         if (CatalogTask.FindBySegment(taskSegment) is not { } task)
         {
             context.ReportDiagnostic(Diagnostic.Create(
-                UnsupportedOutput, Location.None, taskSegment, providerName, $"unknown task; expected one of {string.Join(", ", CatalogTask.All.Select(t => t.Segment))}"));
+                UnsupportedOutput, Location.None, taskSegment, providerList, $"unknown task; expected one of {string.Join(", ", CatalogTask.All.Select(t => t.Segment))}"));
             return;
         }
 
@@ -106,35 +103,48 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
             return;
         }
 
+        // The package must implement exactly the providers that have models of this task.
+        var implemented = new HashSet<string>(
+            providerList.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()).Where(p => p.Length > 0),
+            StringComparer.OrdinalIgnoreCase);
         var models = manifests.SelectMany(m => m.Models).Where(m => m.Task == task).ToList();
-        if (providerName.Length == 0)
+        foreach (var provider in manifests.Select(m => m.Provider))
         {
-            context.AddSource(task.Segment + "Catalog.g.cs", SourceText.From(EmitTaskCatalog(task, models), Encoding.UTF8));
+            var hasModels = models.Any(m => m.Provider == provider);
+            if (hasModels && !implemented.Contains(provider.Name))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    UnsupportedOutput, Location.None, taskSegment, providerList,
+                    $"the {provider.Name} manifest has {task.Text} models, but the package doesn't implement the {provider.Name} provider; add {task.Segment} to LocalAI{provider.Name}Tasks"));
+                return;
+            }
+
+            if (!hasModels && implemented.Contains(provider.Name))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    UnsupportedOutput, Location.None, taskSegment, providerList,
+                    $"the {provider.Name} manifest has no {task.Text} models; remove {task.Segment} from LocalAI{provider.Name}Tasks"));
+                return;
+            }
+        }
+
+        if (implemented.FirstOrDefault(name => !manifests.Any(m => string.Equals(m.Provider.Name, name, StringComparison.OrdinalIgnoreCase))) is { } unknown)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(UnsupportedOutput, Location.None, taskSegment, providerList, $"no manifest declares the provider '{unknown}'"));
             return;
         }
 
-        var provider = manifests.Select(m => m.Provider).FirstOrDefault(p => string.Equals(p.Name, providerName, StringComparison.OrdinalIgnoreCase));
-        if (provider is null)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(UnsupportedOutput, Location.None, taskSegment, providerName, "no manifest declares this provider"));
-            return;
-        }
-
-        var providerModels = models.Where(m => m.Provider == provider).ToList();
-        if (providerModels.Count == 0)
-        {
-            context.ReportDiagnostic(Diagnostic.Create(UnsupportedOutput, Location.None, taskSegment, providerName, "the provider's manifest has no models of this task"));
-            return;
-        }
-
-        context.AddSource(provider.Name + task.Segment + "Registration.g.cs", SourceText.From(EmitProviderDescriptors(task, provider, providerModels), Encoding.UTF8));
+        context.AddSource(task.Segment + "Catalog.g.cs", SourceText.From(EmitTaskCatalog(task, models), Encoding.UTF8));
     }
 
-    /// <summary>Generates a task package's catalog: the handle properties, the entries and the placeholder type.</summary>
+    /// <summary>
+    /// Generates a task package's catalog: the handle properties, each bound to its provider's
+    /// <c>&lt;Provider&gt;ModelFactory.Create(LocalModelDescriptor)</c> in the same package, and the descriptors.
+    /// </summary>
     internal static string EmitTaskCatalog(CatalogTask task, IReadOnlyList<CatalogModel> models)
     {
-        var entries = task.Segment + "Catalog";
-        var placeholder = "Unbound" + task.Segment + "Model";
+        var catalog = task.Segment + "Catalog";
+        var modelType = "global::Microsoft.AI.Local." + task.ModelInterface;
         var sb = new StringBuilder();
         AppendHeader(sb);
         sb.AppendLine("namespace Microsoft.AI.Local");
@@ -143,14 +153,11 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
         sb.AppendLine("    {");
         foreach (var model in models)
         {
-            EmitHandle(sb, model, entries);
+            EmitHandle(sb, model, catalog);
         }
 
-        sb.AppendLine("        /// <summary>");
-        sb.AppendLine("        /// Gets every supported (not retired) model of this task type, from every provider. Models whose provider package");
-        sb.AppendLine("        /// isn't referenced report <see cref=\"global::Microsoft.AI.Local.ModelAvailabilityStatus.MissingAppRequirement\"/>.");
-        sb.AppendLine("        /// </summary>");
-        sb.Append("        public static global::System.Collections.Generic.IReadOnlyList<global::Microsoft.AI.Local.").Append(task.ModelInterface).AppendLine("> All =>");
+        sb.AppendLine("        /// <summary>Gets every supported (not retired) model of this task type, from every provider.</summary>");
+        sb.Append("        public static global::System.Collections.Generic.IReadOnlyList<").Append(modelType).AppendLine("> All =>");
         sb.AppendLine("        [");
         foreach (var model in models.Where(m => m.RetiredMessage is null))
         {
@@ -163,94 +170,37 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("namespace Microsoft.AI.Local.Catalog");
         sb.AppendLine("{");
-        sb.AppendLine("    /// <summary>The catalog entries of this task, including retired models.</summary>");
-        sb.Append("    internal static class ").AppendLine(entries);
+        sb.AppendLine("    /// <summary>The descriptors and handles of this task's models, including retired models.</summary>");
+        sb.Append("    internal static class ").AppendLine(catalog);
         sb.AppendLine("    {");
         foreach (var model in models)
         {
-            sb.Append("        public static readonly ").Append(Providers).Append("LocalModelCatalogEntry ").Append(EntryName(model)).AppendLine(" = new(");
+            var name = EntryName(model);
+            sb.Append("        public static readonly ").Append(Providers).Append("LocalModelDescriptor ").Append(name).AppendLine("Descriptor =");
             EmitDescriptor(sb, model, "            ");
-            sb.AppendLine(",");
-            sb.Append("            ").Append(Literal(model.Package)).AppendLine(",");
-            sb.Append("            ").Append(Literal(model.RegistrationType)).AppendLine(",");
-            sb.Append("            typeof(global::Microsoft.AI.Local.").Append(task.CatalogClass).AppendLine(").Assembly,");
-            sb.Append("            static entry => new ").Append(placeholder).AppendLine("(entry));");
+            sb.AppendLine(";");
+            sb.AppendLine();
+            sb.Append("        private static ").Append(modelType).Append("? _").Append(name).AppendLine(";");
+            sb.AppendLine();
+            sb.Append("        public static ").Append(modelType).Append(' ').Append(name).AppendLine(" =>");
+            sb.Append("            global::System.Threading.LazyInitializer.EnsureInitialized(ref _").Append(name).Append(", static () => Bind(global::")
+                .Append(model.Provider.Namespace).Append('.').Append(model.Provider.Name).Append("ModelFactory.Create(").Append(name).AppendLine("Descriptor)));");
             sb.AppendLine();
         }
 
-        sb.Append("        public static global::System.Collections.Generic.IReadOnlyList<").Append(Providers).AppendLine("LocalModelCatalogEntry> All { get; } =");
+        sb.Append("        public static global::System.Collections.Generic.IReadOnlyList<").Append(Providers).AppendLine("LocalModelDescriptor> Descriptors { get; } =");
         sb.AppendLine("        [");
         foreach (var model in models)
         {
-            sb.Append("            ").Append(EntryName(model)).AppendLine(",");
+            sb.Append("            ").Append(EntryName(model)).AppendLine("Descriptor,");
         }
 
         sb.AppendLine("        ];");
+        sb.AppendLine();
+        sb.Append("        private static ").Append(modelType).AppendLine(" Bind(global::Microsoft.AI.Local.ILocalModel model) =>");
+        sb.Append("            model as ").Append(modelType).Append(" ?? throw new global::System.InvalidOperationException($\"The handle created for '{model.Id}' doesn't implement ")
+            .Append(task.ModelInterface).AppendLine(".\");");
         sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.Append("    internal sealed class ").Append(placeholder).Append("(").Append(Providers).AppendLine("LocalModelCatalogEntry entry)");
-        sb.Append("        : ").Append(Providers).Append("UnboundLocalModel<").Append(task.ClientType).Append(">(entry), global::Microsoft.AI.Local.")
-            .Append(task.ModelInterface).AppendLine(";");
-        sb.AppendLine("}");
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// Generates the descriptors of a provider's models for one task, and the registration class the app's bootstrap
-    /// generator calls. The provider package implements <c>&lt;Provider&gt;ModelFactory.Create(LocalModelDescriptor)</c>.
-    /// </summary>
-    internal static string EmitProviderDescriptors(CatalogTask task, CatalogProvider provider, IReadOnlyList<CatalogModel> models)
-    {
-        var registration = provider.Name + task.Segment + "Registration";
-        var descriptors = provider.Name + "ModelDescriptors";
-        var sb = new StringBuilder();
-        AppendHeader(sb);
-        sb.Append("[assembly: ").Append(Providers).Append("LocalModelProvider(").Append(Literal(provider.PackageFor(task)))
-            .Append(", typeof(global::").Append(provider.Namespace).Append('.').Append(registration).AppendLine("))]");
-        sb.AppendLine();
-        sb.Append("namespace ").Append(provider.Namespace).AppendLine(";");
-        sb.AppendLine();
-        sb.Append("/// <summary>Registers the ").Append(Xml(provider.Name)).Append(' ').Append(Xml(task.Text))
-            .Append(" models with <see cref=\"").Append(Providers).AppendLine("LocalModelCatalog\"/>.</summary>");
-        sb.AppendLine("/// <remarks>");
-        sb.AppendLine("/// Apps built with the C# compiler don't call this: the Microsoft.AI.Local source generator calls it from a module");
-        sb.AppendLine("/// initializer. Other apps call <see cref=\"Register\"/> once at startup. Registration is idempotent.");
-        sb.AppendLine("/// </remarks>");
-        sb.Append("public static class ").AppendLine(registration);
-        sb.AppendLine("{");
-        sb.AppendLine("    /// <summary>Registers the package's models. Safe to call more than once.</summary>");
-        sb.AppendLine("    public static void Register()");
-        sb.AppendLine("    {");
-        sb.Append("        foreach (var descriptor in ").Append(descriptors).AppendLine(".All)");
-        sb.AppendLine("        {");
-        sb.Append("            ").Append(Providers).Append("LocalModelCatalog.Register(").Append(descriptors).Append(".PackageId, descriptor.Id, () => ")
-            .Append(provider.Name).AppendLine("ModelFactory.Create(descriptor));");
-        sb.AppendLine("        }");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-        sb.AppendLine();
-        sb.Append("/// <summary>The catalog-manifest descriptors of the ").Append(Xml(provider.Name)).Append(' ').Append(Xml(task.Text)).AppendLine(" models, including retired models.</summary>");
-        sb.Append("internal static class ").AppendLine(descriptors);
-        sb.AppendLine("{");
-        sb.AppendLine("    /// <summary>The NuGet package ID of this provider package.</summary>");
-        sb.Append("    public const string PackageId = ").Append(Literal(provider.PackageFor(task))).AppendLine(";");
-        sb.AppendLine();
-        foreach (var model in models)
-        {
-            sb.Append("    public static readonly ").Append(Providers).Append("LocalModelDescriptor ").Append(model.Property).AppendLine(" =");
-            EmitDescriptor(sb, model, "        ");
-            sb.AppendLine(";");
-            sb.AppendLine();
-        }
-
-        sb.Append("    public static global::System.Collections.Generic.IReadOnlyList<").Append(Providers).AppendLine("LocalModelDescriptor> All { get; } =");
-        sb.AppendLine("    [");
-        foreach (var model in models)
-        {
-            sb.Append("        ").Append(model.Property).AppendLine(",");
-        }
-
-        sb.AppendLine("    ];");
         sb.AppendLine("}");
         return sb.ToString();
     }
@@ -264,7 +214,7 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
         sb.AppendLine();
     }
 
-    private static void EmitHandle(StringBuilder sb, CatalogModel model, string entries)
+    private static void EmitHandle(StringBuilder sb, CatalogModel model, string catalog)
     {
         var provider = model.Provider;
         sb.Append("        /// <summary>").Append(Xml(model.DisplayName));
@@ -275,9 +225,8 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
 
         sb.Append(": ").Append(Xml(model.Description ?? model.Task.Text)).AppendLine("</summary>");
         sb.AppendLine("        /// <remarks>");
-        sb.Append("        /// <para><b>Requires the <c>").Append(Xml(model.Package)).Append("</c> package</b> (").Append(Xml(provider.Name))
-            .AppendLine(" provider). Without it, the handle reports <see cref=\"global::Microsoft.AI.Local.ModelAvailabilityStatus.MissingAppRequirement\"/>.</para>");
-        sb.Append("        /// <para>Model ID <c>").Append(Xml(model.Id)).Append("</c>. Task: ").Append(Xml(model.Task.Text)).AppendLine(".</para>");
+        sb.Append("        /// <para>Model ID <c>").Append(Xml(model.Id)).Append("</c>. Task: ").Append(Xml(model.Task.Text))
+            .Append(". Provider: ").Append(Xml(provider.Name)).AppendLine(".</para>");
         var capabilities = DescribeCapabilities(model);
         if (capabilities.Length > 0)
         {
@@ -303,11 +252,9 @@ public sealed class ModelCatalogGenerator : IIncrementalGenerator
             sb.Append("        [global::System.Obsolete(").Append(Literal(message)).AppendLine(")]");
         }
 
-        sb.Append("        [").Append(Providers).Append("RequiresLocalModelProvider(").Append(Literal(model.Package))
-            .Append(", ProviderName = ").Append(Literal(provider.Name)).AppendLine(")]");
+        sb.Append("        [").Append(Providers).Append("LocalModelProvider(").Append(Literal(provider.Name)).AppendLine(")]");
         sb.Append("        public static global::Microsoft.AI.Local.").Append(model.Task.ModelInterface).Append(' ').Append(model.Property)
-            .Append(" => global::Microsoft.AI.Local.Catalog.").Append(entries).Append('.').Append(EntryName(model))
-            .Append(".Get<global::Microsoft.AI.Local.").Append(model.Task.ModelInterface).AppendLine(">();");
+            .Append(" => global::Microsoft.AI.Local.Catalog.").Append(catalog).Append('.').Append(EntryName(model)).AppendLine(";");
         sb.AppendLine();
     }
 

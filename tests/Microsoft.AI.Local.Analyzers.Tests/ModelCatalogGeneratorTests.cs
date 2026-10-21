@@ -16,21 +16,22 @@ public class ModelCatalogGeneratorTests
     [Fact]
     public void TaskPackageGetsEveryProvidersModels()
     {
-        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "TextGeneration"));
+        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "TextGeneration"), ("LocalAIProviders", "Foundry,Windows"));
 
         Assert.Empty(diagnostics);
         Assert.Contains("public static partial class LanguageModels", generated, StringComparison.Ordinal);
         Assert.Contains("ITextGenerationModel PhiSilica =>", generated, StringComparison.Ordinal);
         Assert.Contains("ITextGenerationModel Qwen35_08B =>", generated, StringComparison.Ordinal);
-        Assert.Contains("RequiresLocalModelProvider(\"Microsoft.AI.Local.TextGeneration.Windows\", ProviderName = \"Windows\")", generated, StringComparison.Ordinal);
-        Assert.Contains("RequiresLocalModelProvider(\"Microsoft.AI.Local.TextGeneration.Foundry\", ProviderName = \"Foundry\")", generated, StringComparison.Ordinal);
+        Assert.Contains("LocalModelProvider(\"Windows\")", generated, StringComparison.Ordinal);
+        Assert.Contains("LocalModelProvider(\"Foundry\")", generated, StringComparison.Ordinal);
         Assert.DoesNotContain("WhisperTiny", generated, StringComparison.Ordinal);
+        Assert.DoesNotContain("Registration", generated, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ImagingTasksUseWindowsDefaultNames()
     {
-        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "ImageTextRecognition"));
+        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "ImageTextRecognition"), ("LocalAIProviders", "Windows"));
 
         Assert.Empty(diagnostics);
         Assert.Contains("public static partial class ImageTextRecognitionModels", generated, StringComparison.Ordinal);
@@ -38,22 +39,29 @@ public class ModelCatalogGeneratorTests
     }
 
     [Fact]
-    public void ProviderPackageGetsItsDescriptorsAndRegistration()
+    public void HandlesBindToTheProviderFactoriesInThePackage()
     {
-        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "TextGeneration"), ("LocalAIProvider", "Foundry"));
+        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "TextGeneration"), ("LocalAIProviders", "Foundry,Windows"));
 
         Assert.Empty(diagnostics);
-        Assert.Contains("LocalModelProvider(\"Microsoft.AI.Local.TextGeneration.Foundry\", typeof(global::Microsoft.AI.Local.Foundry.FoundryTextGenerationRegistration))", generated, StringComparison.Ordinal);
-        Assert.Contains("public static class FoundryTextGenerationRegistration", generated, StringComparison.Ordinal);
+        Assert.Contains("global::Microsoft.AI.Local.Foundry.FoundryModelFactory.Create(Foundry_Phi4MiniDescriptor)", generated, StringComparison.Ordinal);
+        Assert.Contains("global::Microsoft.AI.Local.Windows.WindowsModelFactory.Create(Windows_PhiSilicaDescriptor)", generated, StringComparison.Ordinal);
         Assert.Contains("\"foundry/phi-4-mini\"", generated, StringComparison.Ordinal);
-        Assert.DoesNotContain("phi-silica", generated, StringComparison.Ordinal);
-        Assert.DoesNotContain("whisper", generated, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProviderWithModelsTheTaskPackageDoesntImplementIsAnError()
+    {
+        var (_, diagnostics) = Run(Manifests, ("LocalAITask", "TextGeneration"), ("LocalAIProviders", "Foundry"));
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal("MSAILOCALGEN003", diagnostic.Id);
+        Assert.Contains("LocalAIWindowsTasks", diagnostic.GetMessage(), StringComparison.Ordinal);
     }
 
     [Fact]
     public void ProviderWithoutModelsOfTheTaskIsAnError()
     {
-        var (_, diagnostics) = Run(Manifests, ("LocalAITask", "ImageScaling"), ("LocalAIProvider", "Foundry"));
+        var (_, diagnostics) = Run(Manifests, ("LocalAITask", "ImageScaling"), ("LocalAIProviders", "Foundry,Windows"));
         Assert.Equal("MSAILOCALGEN003", Assert.Single(diagnostics).Id);
     }
 
@@ -68,7 +76,7 @@ public class ModelCatalogGeneratorTests
               ]
             }
             """;
-        var (_, diagnostics) = Run([.. Manifests, new InMemoryAdditionalText("contoso-models.json", other)], ("LocalAITask", "TextGeneration"));
+        var (_, diagnostics) = Run([.. Manifests, new InMemoryAdditionalText("contoso-models.json", other)], ("LocalAITask", "TextGeneration"), ("LocalAIProviders", "Foundry,Windows"));
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal("MSAILOCALGEN002", diagnostic.Id);
         Assert.Contains("LanguageModels.PhiSilica", diagnostic.GetMessage(), StringComparison.Ordinal);
@@ -85,7 +93,8 @@ public class ModelCatalogGeneratorTests
     public void GeneratedCatalogCompiles()
     {
         // The emitted source must at least parse; full compilation is covered by building the task packages.
-        var (generated, _) = Run(Manifests, ("LocalAITask", "SpeechToText"));
+        var (generated, diagnostics) = Run(Manifests, ("LocalAITask", "SpeechToText"), ("LocalAIProviders", "Foundry,Windows"));
+        Assert.Empty(diagnostics);
         var tree = CSharpSyntaxTree.ParseText(generated, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Empty(tree.GetDiagnostics(TestContext.Current.CancellationToken));
     }

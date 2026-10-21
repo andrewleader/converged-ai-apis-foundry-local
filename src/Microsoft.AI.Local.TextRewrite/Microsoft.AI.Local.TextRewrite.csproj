@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The text rewrite contract of Microsoft.AI.Local: ITextRewriter, ITextRewriteModel and the TextRewriteModels catalog, plus an adapter that rewrites with any chat model. Pure managed. Add a provider package such as Microsoft.AI.Local.TextRewrite.Windows to get models.</Description>
+    <Description>Text rewrite for Microsoft.AI.Local: ITextRewriter, ITextRewriteModel and the TextRewriteModels catalog with every model of the task: the Windows inbox models (Windows AI APIs on Copilot+ PCs, delivered and serviced by Windows; no ONNX Runtime in the app; the net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if). Also adapts any chat model to rewriting.</Description>
   </PropertyGroup>
 
 </Project>

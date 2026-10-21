@@ -4,7 +4,7 @@ using Microsoft.Windows.AI.Text;
 
 namespace Microsoft.AI.Local.Windows.Providers;
 
-/// <summary>Conversions between this library's types and the Windows AI API types, for Windows task provider packages.</summary>
+/// <summary>Conversions between this library's types and the Windows AI API types, for the task packages that implement Windows models.</summary>
 public static class WindowsAIInterop
 {
     /// <summary>Gets the content-filter thresholds set with <c>WithWindowsContentFilter</c>, if any.</summary>

@@ -21,7 +21,7 @@ internal interface IFoundryModelHandle : ILocalModel
 /// (initialize Foundry Local → register execution providers → download → load), device variants, and
 /// reference-counted unloading across clients (see <see cref="FoundryUnloadPolicy"/>).
 /// </summary>
-/// <remarks>This type is intended for Foundry task provider packages. App code uses the <see cref="ILocalModel"/> interfaces.</remarks>
+/// <remarks>This type is intended for the task packages that implement Foundry Local models. App code uses the <see cref="ILocalModel"/> interfaces.</remarks>
 /// <typeparam name="TClient">The inference client contract.</typeparam>
 public abstract partial class FoundryModelHandle<TClient> : LocalModelBase<TClient>, IFoundryModelHandle
     where TClient : class

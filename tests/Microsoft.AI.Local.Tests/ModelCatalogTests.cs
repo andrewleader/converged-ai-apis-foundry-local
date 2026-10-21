@@ -1,30 +1,27 @@
 using Microsoft.AI.Local.Foundry;
-using Microsoft.AI.Local.Providers;
+using Microsoft.AI.Local.Foundry.Providers;
 using Microsoft.Extensions.AI;
 
 namespace Microsoft.AI.Local.Tests;
 
 /// <summary>
-/// End-to-end tests of the model catalog. This project references the TextGeneration (Foundry and Windows),
-/// TextEmbedding, SpeechToText, TextSummarization and ImageTextRecognition provider packages, and the ImageScaling
-/// contract package without a provider. The Microsoft.AI.Local source generator registers the referenced providers
-/// from a module initializer, exactly as in an app.
+/// End-to-end tests of the model catalog. This project references the TextGeneration, TextEmbedding, SpeechToText,
+/// TextSummarization, ImageTextRecognition and ImageScaling task packages, exactly as an app would: each task package
+/// contains every provider's models of its task, so every handle binds to its implementation with no setup.
 /// </summary>
 public class ModelCatalogTests
 {
     [Fact]
-    public void CatalogHandlesBindToTheReferencedProviders()
+    public void CatalogHandlesBindToTheirProviders()
     {
         var phi4 = LanguageModels.Phi4Mini;
         Assert.Equal("foundry/phi-4-mini", phi4.Id);
         Assert.Equal("Foundry", phi4.ProviderName);
-        Assert.Same(phi4, LocalModelCatalog.Resolve(phi4));
-        Assert.Contains("Foundry", phi4.GetType().Name, StringComparison.Ordinal);
+        Assert.IsAssignableFrom<IFoundryModelHandle>(phi4);
 
         var phiSilica = LanguageModels.PhiSilica;
         Assert.Equal("windows/phi-silica", phiSilica.Id);
         Assert.Equal("Windows", phiSilica.ProviderName);
-        Assert.Same(phiSilica, LocalModelCatalog.Resolve(phiSilica));
 
         Assert.Equal("windows/text-recognition", ImageTextRecognitionModels.WindowsDefault.Id);
         Assert.Equal("foundry/qwen3-embedding-0.6b", TextEmbeddingModels.Qwen3Embedding_06B.Id);
@@ -48,7 +45,7 @@ public class ModelCatalogTests
     [Fact]
     public async Task WindowsModelsReportNotSupportedOnPlatformInPortableApps()
     {
-        // This test project targets net8.0, so it gets the platform-neutral build of the Windows provider packages.
+        // This test project targets net8.0, so it gets the platform-neutral build of the task packages, where Windows models report NotSupportedOnPlatform.
         var availability = await LanguageModels.PhiSilica.GetAvailabilityAsync(TestContext.Current.CancellationToken);
         Assert.Equal(ModelAvailabilityStatus.NotSupportedOnPlatform, availability.Status);
         await Assert.ThrowsAsync<LocalModelNotSupportedException>(() => LanguageModels.PhiSilica.CreateClientAsync(TestContext.Current.CancellationToken));
@@ -60,7 +57,6 @@ public class ModelCatalogTests
         var windows = SpeechToTextModels.WindowsDefault;
         Assert.Equal("windows/speech-recognition", windows.Id);
         Assert.Equal("Windows", windows.ProviderName);
-        Assert.Same(windows, LocalModelCatalog.Resolve(windows));
         Assert.True(windows.Capabilities.SupportsAudioInput);
         Assert.Equal(
             ModelAvailabilityStatus.NotSupportedOnPlatform,
@@ -72,57 +68,36 @@ public class ModelCatalogTests
     }
 
     [Fact]
-    public async Task HandleWithoutProviderPackageReportsMissingAppRequirement()
+    public async Task EveryHandleOfATaskPackageIsImplemented()
     {
-#pragma warning disable MSAILOCAL201 // Intentionally used without its provider package.
+        // ImageScaling has only Windows models: in this net8.0 app they are implemented and report NotSupportedOnPlatform.
         var model = ImageScalingModels.WindowsDefault;
-#pragma warning restore MSAILOCAL201
-
         Assert.Equal("windows/image-scaling", model.Id);
         Assert.Equal("Windows", model.ProviderName);
-        Assert.Null(LocalModelCatalog.Resolve(model));
+        Assert.Same(model, ImageScalingModels.WindowsDefault);
 
         var availability = await model.GetAvailabilityAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(ModelAvailabilityStatus.MissingAppRequirement, availability.Status);
-        Assert.Contains("Microsoft.AI.Local.ImageScaling.Windows", availability.Reason, StringComparison.Ordinal);
+        Assert.Equal(ModelAvailabilityStatus.NotSupportedOnPlatform, availability.Status);
         Assert.False(availability.IsAvailable);
 
-        Assert.Equal(availability, await model.EnsureReadyAsync(cancellationToken: TestContext.Current.CancellationToken));
-        var ex = await Assert.ThrowsAsync<LocalModelNotSupportedException>(() => model.CreateClientAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(ModelAvailabilityStatus.MissingAppRequirement, ex.Availability.Status);
-        Assert.Equal("windows/image-scaling", ex.ModelId);
+        IEnumerable<ILocalModel> all =
+        [
+            .. LanguageModels.All, .. TextEmbeddingModels.All, .. SpeechToTextModels.All, .. TextSummarizationModels.All,
+            .. ImageTextRecognitionModels.All, .. ImageScalingModels.All,
+        ];
+        foreach (var handle in all)
+        {
+            var status = (await handle.GetAvailabilityAsync(TestContext.Current.CancellationToken)).Status;
+            Assert.NotEqual(ModelAvailabilityStatus.MissingAppRequirement, status);
+        }
     }
 
     [Fact]
-    public async Task SelectFirstAvailableSkipsHandlesWithoutProvider()
+    public async Task SelectFirstAvailableSkipsModelsThatCantRunHere()
     {
-#pragma warning disable MSAILOCAL201
-        var missing = ImageScalingModels.WindowsDefault;
-#pragma warning restore MSAILOCAL201
-        var ex = await Assert.ThrowsAsync<LocalModelNotSupportedException>(() => LocalModel.SelectFirstAvailableAsync([missing], TestContext.Current.CancellationToken));
-        Assert.Contains("Microsoft.AI.Local.ImageScaling.Windows", ex.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void RegistrationIsIdempotent()
-    {
-        var before = LanguageModels.Phi4Mini;
-        FoundryTextGenerationRegistration.Register();
-        Microsoft.AI.Local.Windows.WindowsTextGenerationRegistration.Register();
-        Assert.Same(before, LanguageModels.Phi4Mini);
-    }
-
-    [Fact]
-    public void ModelIdCantBeRegisteredByTwoPackages() =>
-        Assert.Throws<InvalidOperationException>(() =>
-            LocalModelCatalog.Register("Contoso.AI.Local.TextGeneration.Foundry", "foundry/phi-4-mini", () => LanguageModels.Phi4Mini));
-
-    [Fact]
-    public void ReferencedProviderPackagesAreReported()
-    {
-        Assert.True(LocalModelCatalog.IsPackageRegistered("Microsoft.AI.Local.TextGeneration.Foundry"));
-        Assert.True(LocalModelCatalog.IsPackageRegistered("Microsoft.AI.Local.TextGeneration.Windows"));
-        Assert.False(LocalModelCatalog.IsPackageRegistered("Microsoft.AI.Local.ImageScaling.Windows"));
+        var ex = await Assert.ThrowsAsync<LocalModelNotSupportedException>(
+            () => LocalModel.SelectFirstAvailableAsync([ImageScalingModels.WindowsDefault], TestContext.Current.CancellationToken));
+        Assert.Contains("windows/image-scaling: NotSupportedOnPlatform", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

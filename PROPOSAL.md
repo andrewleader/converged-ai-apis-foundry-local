@@ -25,14 +25,14 @@ Because the shapes are different, switching from Phi Silica to Phi-4-mini (or ba
 
 **This proposal adds a thin, pure-managed convergence layer.** It has four parts:
 
-1. **One shared core package** (`Microsoft.AI.Local`). It has no native dependencies and defines the single **model acquisition contract** (`ILocalModel`: availability, `EnsureReadyAsync`, progress), the shared image type and errors, and the **model catalog** that connects model handles to the packages that implement them.
-2. **One task package per task type** (`Microsoft.AI.Local.TextGeneration`, `Microsoft.AI.Local.ImageTextRecognition`, ...). Each defines that task's **inference contract** and its **catalog class**. Where a **Microsoft.Extensions.AI (MEAI)** contract exists we use it (`IChatClient`, `IEmbeddingGenerator<,>`, `ISpeechToTextClient`). Otherwise we add MEAI-style interfaces (OCR, image description, super-resolution, and so on). Task packages **version independently**, so a breaking change in the text-generation API doesn't touch OCR.
-3. **One task provider package per task and provider** (`Microsoft.AI.Local.TextGeneration.Windows`, `Microsoft.AI.Local.TextGeneration.Foundry`, ...), built on one **provider infrastructure package** per dependency set:
+1. **One shared core package** (`Microsoft.AI.Local`). It has no native dependencies and defines the single **model acquisition contract** (`ILocalModel`: availability, `EnsureReadyAsync`, progress), the shared image type and errors, and the **model catalog** types the task packages generate their catalog classes from.
+2. **One task package per task type** (`Microsoft.AI.Local.TextGeneration`, `Microsoft.AI.Local.ImageTextRecognition`, ...). Each defines that task's **inference contract** and its **catalog class**, and contains **every provider's models of that task**, so referencing a task package makes all of its handles work. Where a **Microsoft.Extensions.AI (MEAI)** contract exists we use it (`IChatClient`, `IEmbeddingGenerator<,>`, `ISpeechToTextClient`). Otherwise we add MEAI-style interfaces (OCR, image description, super-resolution, and so on). Task packages **version independently**, so a breaking change in the text-generation API doesn't touch OCR.
+3. **One provider infrastructure package per dependency set**, which the task packages build their models on:
    - `Microsoft.AI.Local.Windows`: shared plumbing for inbox models over `Microsoft.WindowsAppSDK.AI`. **No ORT.**
    - `Microsoft.AI.Local.Foundry`: the shared Foundry Local runtime over `Microsoft.AI.Foundry.Local`. **Cross-platform.**
-4. **Strongly typed model handles in one catalog class per task**, covering every provider: `LanguageModels.PhiSilica` (Windows), `LanguageModels.Phi4Mini` (Foundry), `ImageTextRecognitionModels.WindowsDefault`, ... The handle is the only provider-specific code a developer writes. A handle whose provider package isn't referenced produces a **build-time warning** (`MSAILOCAL201`) and reports `MissingAppRequirement` at run time.
+4. **Strongly typed model handles in one catalog class per task**, covering every provider: `LanguageModels.PhiSilica` (Windows), `LanguageModels.Phi4Mini` (Foundry), `ImageTextRecognitionModels.WindowsDefault`, ... The handle is the only provider-specific code a developer writes. A handle that can't run where the app runs (e.g. an inbox model on macOS) reports it through `GetAvailabilityAsync` instead of throwing.
 
-To switch between an inbox model and a Foundry model of the same task type, a developer changes **one `PackageReference` and one model-selection line**. Acquisition and inference code stay the same, and there's no provider-specific `using`.
+To switch between an inbox model and a Foundry model of the same task type, a developer changes **one model-selection line**; no package changes. Acquisition and inference code stay the same, and there's no provider-specific `using`.
 
 ---
 
@@ -43,9 +43,9 @@ To switch between an inbox model and a Foundry model of the same task type, a de
 | ID | Requirement | How this proposal meets it |
 |---|---|---|
 | **P0-3** | Switching between "inbox" and "Foundry" models of the same task type takes ≤ 3 lines of code change. Acquisition and inference code don't change. A separate NuGet package MAY be needed. | Shared `ILocalModel` acquisition contract, shared per-task inference contracts, and one catalog class per task that lists every provider's models. The only provider-specific code is the model handle. See [§6](#6-the-3-line-switch). |
-| **P0-4** | Using a model imports only the minimal dependencies it needs (an inbox-only app does NOT pull ORT/EPs). | The core and task packages are pure managed and depend only on `Microsoft.Extensions.AI.Abstractions`. ORT comes only through the Foundry packages, and an app only gets the task packages of the models it uses. CI enforces this. See [§8](#8-dependency-isolation-p0-4). |
-| **P0-5** | Select models/APIs are truly cross-platform: one NuGet package, code written once, runs on Windows and macOS. Native-specific optimizations are allowed. | Each Foundry task package (e.g. `Microsoft.AI.Local.TextGeneration.Foundry`) is a single `net8.0` package; its Foundry Local runtime carries per-RID native assets. Windows-only overloads (e.g. `SoftwareBitmap`) light up through multi-targeting. See [§9](#9-cross-platform-p0-5). |
-| **P0-6** | Don't split a task type's models into separate packages unless it makes technical sense. | A task's models are split across packages **only by dependency set and platform** (one package per task and provider), never by owning team or model origin. See [§7](#7-package-layout-split-rule-p0-6-and-versioning). |
+| **P0-4** | Using a model imports only the minimal dependencies it needs (an inbox-only app does NOT pull ORT/EPs). | The core is pure managed and depends only on `Microsoft.Extensions.AI.Abstractions`. ORT comes only through Foundry Local, which only the task packages with Foundry models (text generation, embeddings, speech-to-text) depend on, and an app only gets the task packages it uses. An app that uses only inbox-only tasks (OCR, imaging, text skills) carries no ORT. CI enforces this. See [§8](#8-dependency-isolation-p0-4). |
+| **P0-5** | Select models/APIs are truly cross-platform: one NuGet package, code written once, runs on Windows and macOS. Native-specific optimizations are allowed. | Each task package with Foundry models (e.g. `Microsoft.AI.Local.TextGeneration`) has a `net8.0` build; its Foundry Local runtime carries per-RID native assets. Windows-only overloads (e.g. `SoftwareBitmap`) light up through multi-targeting. See [§9](#9-cross-platform-p0-5). |
+| **P0-6** | Don't split a task type's models into separate packages unless it makes technical sense. | A task's models are **not split** across packages: one package per task holds every provider's models, and provider plumbing lives in shared infrastructure packages, never split by owning team or model origin. See [§7](#7-package-layout-split-rule-p0-6-and-versioning). |
 
 ### Non-goals (for this phase)
 
@@ -76,26 +76,23 @@ To switch between an inbox model and a Foundry model of the same task type, a de
   (provider-agnostic)  await model.EnsureReadyAsync(progress);
                        IChatClient chat = await model.CreateClientAsync();
 
- ┌─ Task contract packages (pure managed, one per task, versioned independently) ─────────────────────────────┐
+ ┌─ Task packages (one per task, versioned independently) ──────────────────────────────────────────────────────┐
  │ Microsoft.AI.Local.TextGeneration      ITextGenerationModel, LanguageModels.{PhiSilica, Phi4Mini, ...}     │
  │ Microsoft.AI.Local.ImageTextRecognition ITextRecognizer, ITextRecognitionModel, ImageTextRecognitionModels │
- │ ... (11 tasks: §5.2)                    each catalog class lists every provider's models of the task        │
+ │ ... (11 tasks: §5.2)                    each catalog class lists every provider's models of the task,       │
+ │                                         and the package implements them all (Windows/, Foundry/)            │
  └──────────────────────────────────────────────┬─────────────────────────────────────────────────────────────┘
-                                                │ depends on
+                                                │ depends on the core, and on the infrastructure of each
+                                                │ provider it has models from
  ┌─ Microsoft.AI.Local (core: pure managed, net8.0 + windows TFM) ──────────────────────────────────────────────┐
  │ ILocalModel / ILocalModel<TClient>, availability, progress · ImageFrame · errors · selection · diagnostics  │
- │ model catalog (LocalModelCatalog, descriptors, placeholder handles) · provider SDK (LocalModelBase, ...)    │
- │ build-time: provider-registration source generator, analyzers MSAILOCAL101-103 and MSAILOCAL201              │
+ │ model catalog types (descriptors, provider attribute) · provider SDK (LocalModelBase, ...)                  │
+ │ build-time: analyzers MSAILOCAL101-103                                                                       │
  │ deps: Microsoft.Extensions.AI.Abstractions (+ DI/Logging abstractions)                                        │
  └──────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
- ┌─ Task provider packages (one per task × provider) ─────────────────────────────────────────────────────────┐
- │ Microsoft.AI.Local.TextGeneration.Windows   Microsoft.AI.Local.TextGeneration.Foundry                       │
- │ Microsoft.AI.Local.ImageTextRecognition.Windows   Microsoft.AI.Local.SpeechToText.Foundry   ...             │
- │ each depends on its task contract package + its provider infrastructure package                            │
- └───────────────────────┬─────────────────────────────────────────────────────┬──────────────────────────────┘
-                         │                                                     │
- ┌───────────────────────▼────────────────────────┐   ┌────────────────────────▼────────────────────────────┐
+  Provider infrastructure (shared by the task packages)
+ ┌─────────────────────────────────────────────────┐   ┌──────────────────────────────────────────────────────┐
  │ Microsoft.AI.Local.Windows (no models)          │   │ Microsoft.AI.Local.Foundry (no models)               │
  │ LAF unlock, identity checks, options, base      │   │ Foundry Local runtime: init, EPs, download, load,    │
  │ classes. TFM: net8.0-windows10.0.19041.0        │   │ unload; options; WithDevice; base classes.           │
@@ -209,9 +206,9 @@ public interface ITextRecognizer : IDisposable
 }
 ```
 
-**Provider coverage at launch.** A contract exists even when only one provider implements it today, so a later model can be dropped in without touching app code. Each cell is its own task provider package (`Microsoft.AI.Local.<Task>.Windows` / `.Foundry`).
+**Provider coverage at launch.** A contract exists even when only one provider implements it today, so a later model can be dropped in without touching app code. Every cell ships in the task's package (`Microsoft.AI.Local.<Task>`).
 
-| Task type | Inbox (`Microsoft.AI.Local.<Task>.Windows`) | Foundry (`Microsoft.AI.Local.<Task>.Foundry`) |
+| Task type | Inbox (Windows) | Foundry Local |
 |---|---|---|
 | Text generation | Phi Silica (`LanguageModel`) | Catalog LLMs (Phi-4-mini, Qwen 2.5, Mistral, GPT-OSS, DeepSeek-R1 distills, ...) |
 | Embeddings | — (out of scope for now) | Catalog embedding models |
@@ -247,7 +244,7 @@ Speech models need audio from somewhere: a file, a microphone, a call. Capturing
   - `PushAudioStream`, for audio the app already has (calls, capture libraries, the network),
   - the provider-side helpers every speech provider shares: `AudioInput` (detects the container and live streams) and `PcmAudioReader` (converts encoding, channels and sample rate to the format a model needs as the audio arrives).
 
-  Speech provider packages depend on it; speech contracts don't.
+  `Microsoft.AI.Local.SpeechToText` depends on it for its models.
 - **Each model uses its best path, and every source works with every model.** The Windows recognizer pushes 16 kHz PCM into its native streaming recognizer (`SpeechAudioProvider`), which returns partial and final results while the user speaks. Foundry streams PCM into an `AudioSession` request through an `ItemQueue`; a model that can't transcribe live falls back to transcribing the audio when the stream ends.
 - **Why not the native device path?** `AudioConfiguration.FromAudioDevice` captures inside the Windows speech API, but only for that one model, through a legacy device-name lookup. Capturing once in `Microsoft.AI.Local.Audio` gives one microphone API for every model, adds only a buffer copy of latency, and can still switch to a native path later behind the same `MicrophoneStream`.
 
@@ -292,9 +289,9 @@ Every model is reached **only** through a strongly typed handle. The public API 
 // Microsoft.AI.Local.TextGeneration
 public static partial class LanguageModels
 {
-    [RequiresLocalModelProvider("Microsoft.AI.Local.TextGeneration.Windows")] public static ITextGenerationModel PhiSilica  { get; }
-    [RequiresLocalModelProvider("Microsoft.AI.Local.TextGeneration.Foundry")] public static ITextGenerationModel Phi4Mini   { get; }
-    [RequiresLocalModelProvider("Microsoft.AI.Local.TextGeneration.Foundry")] public static ITextGenerationModel Qwen35_08B { get; }
+    [LocalModelProvider("Windows")] public static ITextGenerationModel PhiSilica  { get; }
+    [LocalModelProvider("Foundry")] public static ITextGenerationModel Phi4Mini   { get; }
+    [LocalModelProvider("Foundry")] public static ITextGenerationModel Qwen35_08B { get; }
     // ... one property per model of every provider
     public static IReadOnlyList<ITextGenerationModel> All { get; }
 }
@@ -302,27 +299,27 @@ public static partial class LanguageModels
 // Microsoft.AI.Local.ImageTextRecognition
 public static partial class ImageTextRecognitionModels
 {
-    [RequiresLocalModelProvider("Microsoft.AI.Local.ImageTextRecognition.Windows")] public static ITextRecognitionModel WindowsDefault { get; }
+    [LocalModelProvider("Windows")] public static ITextRecognitionModel WindowsDefault { get; }
 }
 ```
 
 The imaging tasks have one catalog class each (`ImageTextRecognitionModels`, `ImageDescriptionModels`, `ImageScalingModels`, `ImageSegmentationModels`, `ImageObjectRemovalModels`). The inbox imaging models have no product name, so their handles are named `WindowsDefault` (or by function where Windows has several, e.g. `ImageSegmentationModels.WindowsForegroundExtraction` and `WindowsObjectExtraction`). The Phi Silica text skills are `TextSummarizationModels.PhiSilica`, `TextRewriteModels.PhiSilica` and `TextToTableModels.PhiSilica`.
 
-**How a handle binds to its provider.** The catalog class lives in the task package, but the implementation lives in a provider package the app may or may not reference:
+**How a handle binds to its provider.** The catalog class and every provider's implementation of the task live in the same task package, so binding happens at build time:
 
-1. **Handles are generated from checked-in manifests.** `eng/catalog/<provider>-models.json` (today `windows-models.json` and `foundry-models.json`) lists each provider's models: alias, task, catalog property name, capabilities, platforms and retirement. A source generator emits each task package's catalog class from all manifests, and each task provider package's descriptors from its own manifest, so the handle and the implementation always agree on identity and capabilities.
-2. **Provider packages register themselves without reflection.** Each task provider package declares `[assembly: LocalModelProvider("Microsoft.AI.Local.TextGeneration.Foundry", typeof(FoundryTextGenerationRegistration))]`. A source generator that ships in `Microsoft.AI.Local` runs in the app's build, finds those attributes on the app's references, and emits a module initializer that calls each `Register()`. Registration is explicit code, so trimming and Native AOT keep working and nothing is loaded that the app doesn't reference. Apps that don't build with the C# compiler call `Register()` themselves; C# apps can opt out with `<MicrosoftAILocalAutoRegisterProviders>false</MicrosoftAILocalAutoRegisterProviders>`.
-3. **A missing provider is caught at build time.** Analyzer `MSAILOCAL201` (shipped in `Microsoft.AI.Local`) warns at each use of a handle whose provider package the app doesn't reference, e.g. *"'LanguageModels.Qwen35_08B' is implemented by the Microsoft.AI.Local.TextGeneration.Foundry package, which this project doesn't reference ... Add it with 'dotnet add package Microsoft.AI.Local.TextGeneration.Foundry'."* Only executables are checked: a library may use a handle without its provider so the app can choose.
-4. **…and at run time.** Until its provider registers, a handle is a placeholder that reports `ModelAvailabilityStatus.MissingAppRequirement` with the same guidance (or with "update the package" when the provider package is referenced but older than the catalog). It never throws from the handle, so `LocalModel.SelectFirstAvailableAsync` falls through to the next candidate.
+1. **Handles are generated from checked-in manifests.** `eng/catalog/<provider>-models.json` (today `windows-models.json` and `foundry-models.json`) lists each provider's models: alias, task, catalog property name, capabilities, platforms and retirement. A source generator emits each task package's catalog class and model descriptors from all manifests, so the handle and the implementation always agree on identity and capabilities.
+2. **Each property returns the provider's handle directly.** The generated property creates the handle once, lazily, by calling the provider's internal `<Provider>ModelFactory.Create(descriptor)` in the same assembly. There's no registration step and no reflection, so trimming and Native AOT keep working, and every handle works as soon as the app references the task package.
+3. **Coverage is checked when the package builds.** Each task package declares the providers it implements; if a manifest lists models of the task for a provider the package doesn't implement (or the other way around), the generator fails the build (`MSAILOCALGEN003`), so a shipped catalog never contains a handle without an implementation.
+4. **A model that can't run here says so.** A handle never throws from the handle itself: an inbox model off Windows (or in the `net8.0` build) reports `ModelAvailabilityStatus.NotSupportedOnPlatform`, and missing app setup reports `MissingAppRequirement`, so `LocalModel.SelectFirstAvailableAsync` falls through to the next candidate.
 
 Other properties of handles:
 
 - **The task type is in the type.** `SpeechToTextModels.WhisperTiny` is an `ISpeechToTextModel`, so assigning it to an `ITextGenerationModel` is a compile error rather than a runtime failure. A model that supports several tasks (e.g. a vision-capable chat model) appears in each matching catalog class.
-- **One provider per handle.** A handle names one provider package. When two providers ship the same model, they get distinct names (as `PhiSilica` and `Phi4Mini` already are), so availability and behavior stay predictable.
-- **New models ship as package updates.** Adding a model means a manifest PR, a conformance pass, and a minor version of the task package and its provider package. A scheduled CI job compares the Foundry manifest with the live Foundry Local catalog and opens a PR when they drift.
+- **One provider per handle.** A handle is implemented by one provider (`[LocalModelProvider]` names it). When two providers ship the same model, they get distinct names (as `PhiSilica` and `Phi4Mini` already are), so availability and behavior stay predictable.
+- **New models ship as package updates.** Adding a model means a manifest PR, a conformance pass, and a minor version of the task package. A scheduled CI job compares the Foundry manifest with the live Foundry Local catalog and opens a PR when they drift.
 - **Retirement policy.** When a model leaves the provider catalog, its handle is marked `[Obsolete("Use LanguageModels.X instead")]` (warning in the next minor version, error in the next major). At runtime it reports `ModelAvailabilityStatus.Retired`, so shipped apps degrade predictably and can use the §6.5 fallback.
 - **Variants stay typed too.** Device and quantization preferences use enums on the handle (`LanguageModels.Phi4Mini.WithDevice(LocalDevice.Npu)`, from `Microsoft.AI.Local.Foundry`), not variant ID strings.
-- **Third-party providers** implement the same contracts (`ILocalModel<TClient>`, the provider SDK base classes, `LocalModelCatalog`) and expose their handles from their own classes. The first-party catalog classes are curated by this repo's manifests.
+- **Third-party providers** implement the same contracts (`ILocalModel<TClient>`, the provider SDK base classes) and expose their handles from their own classes. The first-party catalog classes are curated by this repo's manifests.
 
 ---
 
@@ -331,15 +328,15 @@ Other properties of handles:
 ### 6.1 Inbox (Phi Silica)
 
 ```xml
-<!-- .csproj -->
-<PackageReference Include="Microsoft.AI.Local.TextGeneration.Windows" />          <!-- ① -->
+<!-- .csproj: one package for every text-generation model -->
+<PackageReference Include="Microsoft.AI.Local.TextGeneration" />
 ```
 
 ```csharp
 using Microsoft.AI.Local;
 using Microsoft.Extensions.AI;
 
-ITextGenerationModel model = LanguageModels.PhiSilica;                             // ②
+ITextGenerationModel model = LanguageModels.PhiSilica;                             // ①
 
 // ---------- Acquisition: identical for every provider ----------
 var availability = await model.GetAvailabilityAsync();
@@ -360,16 +357,13 @@ await foreach (var update in chat.GetStreamingResponseAsync("Why is the sky blue
 ### 6.2 Foundry (Phi-4-mini): the diff
 
 ```diff
-- <PackageReference Include="Microsoft.AI.Local.TextGeneration.Windows" />           ①
-+ <PackageReference Include="Microsoft.AI.Local.TextGeneration.Foundry" />
-
-- ITextGenerationModel model = LanguageModels.PhiSilica;                              ②
+- ITextGenerationModel model = LanguageModels.PhiSilica;                              ①
 + ITextGenerationModel model = LanguageModels.Phi4Mini;
 ```
 
-That's **2 lines, counting the project file**, within the 3-line budget. Acquisition and inference code is unchanged (P0-3a, P0-3b), and the package change is the allowed separate NuGet (P0-3c). Both handles are in the same catalog class and namespace, so there is no `using` to change. If the app changes line ② but forgets line ①, analyzer `MSAILOCAL201` says which package to add.
+That's **1 line**, within the 3-line budget. Acquisition and inference code is unchanged (P0-3a, P0-3b), and no package changes, because `Microsoft.AI.Local.TextGeneration` provides both models (P0-3c's separate NuGet isn't needed). Both handles are in the same catalog class and namespace, so there is no `using` to change.
 
-The same applies to every other task type, e.g. `ITextRecognitionModel ocr = ImageTextRecognitionModels.WindowsDefault;` with `Microsoft.AI.Local.ImageTextRecognition.Windows`.
+The same applies to every other task type, e.g. `ITextRecognitionModel ocr = ImageTextRecognitionModels.WindowsDefault;` with `Microsoft.AI.Local.ImageTextRecognition`.
 
 ### 6.3 What makes the switch this small (hidden provider setup)
 
@@ -379,10 +373,10 @@ Some provider setup would otherwise leak into app code. Here's how each piece st
 |---|---|
 | Foundry: `FoundryLocalManager.CreateAsync(Configuration{AppName,...})` must run first | The provider initializes it **lazily and thread-safely** on first `GetAvailabilityAsync`/`EnsureReadyAsync`. `AppName` defaults to the entry assembly name. Optional `FoundryProvider.Configure(o => ...)` at startup, or `IServiceCollection.AddFoundryLocal(...)`, sets cache dir, logging, and so on. If the app already created the manager itself, the provider reuses that instance. |
 | Foundry: EP download on Windows | It's a stage of `EnsureReadyAsync` (`FoundryProviderOptions.ExecutionProviders = Auto \| None \| Explicit[...]`). |
-| Foundry: variant selection (CPU/GPU/NPU, quantization) | Auto-selected by Foundry. Override in the model-selection line, e.g. `LanguageModels.Phi4Mini.WithDevice(LocalDevice.Npu)`. It's still line ②. |
+| Foundry: variant selection (CPU/GPU/NPU, quantization) | Auto-selected by Foundry. Override in the model-selection line, e.g. `LanguageModels.Phi4Mini.WithDevice(LocalDevice.Npu)`. It's still line ①. |
 | Inbox: Limited Access Feature unlock for Phi Silica | MSBuild properties `<WindowsAILimitedAccessFeatureId>` / `<...Token>` generate an assembly attribute, and the provider calls `LimitedAccessFeatures.TryUnlockFeature` inside `EnsureReadyAsync`. If the unlock fails, the result is `MissingAppRequirement`. |
 | Inbox: package identity and `systemAIModels` capability | Reported as `MissingAppRequirement` with an actionable `Reason`. Build-time analyzers warn when a Windows model is used but the manifest lacks the capability (`MSAILOCAL102`) or the app has no manifest (`MSAILOCAL103`). (Manifest/project config isn't app *code*, but we document it as part of the switch checklist.) |
-| Registering the provider package with the catalog | A source generator in `Microsoft.AI.Local` emits the registration call for every referenced provider package (see [§5.6](#56-strongly-typed-model-handles-and-the-model-catalog)). |
+| Connecting the handle to its provider | Generated into the task package at build time; nothing to register (see [§5.6](#56-strongly-typed-model-handles-and-the-model-catalog)). |
 
 ### 6.4 DI variant
 
@@ -400,8 +394,8 @@ This is optional and goes beyond P0, but it's a common ask:
 
 ```csharp
 ITextGenerationModel model = await LocalModel.SelectFirstAvailableAsync(
-    LanguageModels.PhiSilica,   // Copilot+ PC (Microsoft.AI.Local.TextGeneration.Windows)
-    LanguageModels.Phi4Mini);   // everything else, including macOS (Microsoft.AI.Local.TextGeneration.Foundry)
+    LanguageModels.PhiSilica,   // Copilot+ PC (inbox)
+    LanguageModels.Phi4Mini);   // everything else, including macOS (Foundry Local)
 ```
 
 ---
@@ -410,49 +404,41 @@ ITextGenerationModel model = await LocalModel.SelectFirstAvailableAsync(
 
 ### 7.1 Packages
 
-There are four kinds of packages. The project name says which kind it is, and the build derives references, target frameworks and catalog generation from it.
+There are four kinds of packages. The project name says which kind it is, and the build derives references, target frameworks and catalog generation from it (and, for task packages, from the list of tasks each provider implements).
 
 | Kind | Packages | Contents | TFMs / RIDs | Dependencies | Brings ORT? |
 |---|---|---|---|---|---|
-| Core | `Microsoft.AI.Local` | Acquisition contract, `ImageFrame`, errors, selection, diagnostics, the model catalog and provider SDK; the provider-registration generator and analyzers | `net8.0`, `net8.0-windows10.0.19041.0` | `Microsoft.Extensions.AI.Abstractions`, `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **No** |
-| Task contract | `Microsoft.AI.Local.<Task>` (11, see §5.2) | The task's model interface, client contract, options/results, catalog class, adapters and DI helpers | `net8.0` | `Microsoft.AI.Local` | **No** |
+| Core | `Microsoft.AI.Local` | Acquisition contract, `ImageFrame`, errors, selection, diagnostics, the model catalog types and provider SDK; the analyzers | `net8.0`, `net8.0-windows10.0.19041.0` | `Microsoft.Extensions.AI.Abstractions`, `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions` | **No** |
+| Task | `Microsoft.AI.Local.<Task>` (11, see §5.2) | The task's model interface, client contract, options/results, catalog class, adapters and DI helpers, and **every provider's models of the task** | `net8.0`; plus `net8.0-windows10.0.19041.0` for tasks with inbox models (in `net8.0`, every inbox model reports `NotSupportedOnPlatform`) | `Microsoft.AI.Local`, plus `Microsoft.AI.Local.Windows` and/or `Microsoft.AI.Local.Foundry` for the providers it has models from | Only tasks with Foundry models (text generation, embeddings, speech-to-text) |
 | Building block | `Microsoft.AI.Local.Audio` | Microphone capture, live audio streams (`MicrophoneStream`, `PushAudioStream`), and WAV decoding and resampling for speech providers (§5.3.1) | `net8.0`, `net8.0-windows10.0.19041.0` (microphone) | None | **No** |
 | Provider infrastructure | `Microsoft.AI.Local.Windows` | Windows provider options, LAF unlock, identity checks, content-filter options, `ImageBuffer` interop, base classes. **No models.** | `net8.0-windows10.0.19041.0` (real), `net8.0` (no WinAppSDK dependency) | `Microsoft.AI.Local`, `Microsoft.WindowsAppSDK.AI` (Windows TFM only) | **No** |
 | | `Microsoft.AI.Local.Foundry` | The Foundry Local runtime (init, EP download, model download/load/unload), options, `WithDevice`, base classes. **No models.** | `net8.0`; native assets for `win-x64`, `win-arm64`, `osx-arm64`, `linux-x64` | `Microsoft.AI.Local`, `Microsoft.AI.Foundry.Local` | **Yes** (only here) |
-| Task provider | `Microsoft.AI.Local.<Task>.Windows` (10) | The inbox models of one task | `net8.0-windows10.0.19041.0` (real), `net8.0` (every model reports `NotSupportedOnPlatform`) | `Microsoft.AI.Local.<Task>`, `Microsoft.AI.Local.Windows` | **No** |
-| | `Microsoft.AI.Local.<Task>.Foundry` (3) | The Foundry Local models of one task | `net8.0` | `Microsoft.AI.Local.<Task>`, `Microsoft.AI.Local.Foundry` | **Yes** |
-
-An app references the task provider packages of the models it uses, and they bring in the rest. An inbox OCR app references `Microsoft.AI.Local.ImageTextRecognition.Windows` and gets the core, the OCR contract and the Windows infrastructure: no text-generation API, no Foundry Local, nothing native.
+An app references the task packages it uses, and they bring in the rest. An OCR app references `Microsoft.AI.Local.ImageTextRecognition` and gets the core, the OCR API and models, and the Windows infrastructure: no text-generation API, no Foundry Local, nothing native. A text-generation app references `Microsoft.AI.Local.TextGeneration` and gets both Phi Silica and the Foundry Local models.
 
 ### 7.2 Split rule
 
-Packages split along two axes, for different reasons.
+Packages split along one axis: **by task (API surface).** Every task type has its own package. Task APIs evolve at different speeds (text generation changes much faster than OCR), and a task's API is versioned as a unit (§7.3). Shared infrastructure that every task needs (acquisition, errors, `ImageFrame`, the catalog types) lives in the core, and plumbing shared by a provider's tasks lives in that provider's infrastructure package; those are the only things tasks share. Cross-task helpers depend on core types instead of another task's package (for example the summarization adapter takes `ILocalModel<IChatClient>`, not `ITextGenerationModel`).
 
-**By task (API surface).** Every task type has its own contract package and its own provider packages. Task APIs evolve at different speeds (text generation changes much faster than OCR), and a task's API is versioned as a unit (§7.3). Shared infrastructure that every task needs (acquisition, errors, `ImageFrame`, the catalog) lives in the core and is the only thing tasks share. Cross-task helpers depend on core types instead of another task's package (for example the summarization adapter takes `ILocalModel<IChatClient>`, not `ITextGenerationModel`).
+**Within a task, models are not split by provider.** A task package contains every provider's models of the task, so a developer installs one package per task and every handle of its catalog class works. The cost is that a task package carries the dependencies of all of its providers: an app that only uses Phi Silica still gets Foundry Local (and ORT) through `Microsoft.AI.Local.TextGeneration`, and every app that uses speech-to-text gets the experimental Windows App SDK (§7.3). Platform differences are handled by multi-targeting instead of separate packages (inbox models report `NotSupportedOnPlatform` in the `net8.0` build).
 
-**By provider (dependencies).** Within a task, models are split across packages **only if at least one** of these is true:
+A separate package is only justified for something a task package can't reasonably carry:
 
-1. **Different native/runtime dependencies.** Folding it into an existing package would add binaries, runtimes, or EPs that existing users don't need. Example: a model family that needs a different inference runtime, ORT-Extensions, or a vendor-specific EP not handled by WinML's dynamic EP download.
-2. **Different platform support** (TFM/RID matrix). Example: the Windows inbox provider can't be cross-platform.
-3. **Redistribution, size, or licensing constraints.** Example: an optional package that **bundles model weights** for offline install has to be per-model, because weights are gigabytes. It also needs a separate license-acceptance flow.
-4. **Servicing coupling forced by a dependency.** The package has to version in lockstep with something existing packages don't depend on (e.g. a WinAppSDK release).
+1. **Redistribution, size, or licensing constraints.** Example: an optional package that **bundles model weights** for offline install has to be per-model, because weights are gigabytes. It also needs a separate license-acceptance flow.
+2. **Shared plumbing**, which goes in a provider infrastructure package so each piece exists once per app however many tasks it uses (LAF unlock, Foundry Local runtime).
 
 **Not valid reasons:** which team builds the model, whether it's "Microsoft" or "OSS", marketing grouping, or org structure.
 
 **How the rule applies today:**
-- All inbox models of a task share `Microsoft.WindowsAppSDK.AI` → **one** Windows package per task.
-- All Foundry catalog models of a task share Foundry Local Core and ORT GenAI, and weights are downloaded at runtime (no package size cost) → **one** Foundry package per task. That covers Microsoft's and OSS models alike.
-- Shared provider plumbing (LAF unlock, Foundry Local runtime) lives once per provider in the infrastructure package, so each piece exists once per app however many tasks it uses.
-- Windows speech recognition is only in the experimental Windows App SDK (rule 4): `Microsoft.AI.Local.SpeechToText.Windows` is the one package on the experimental channel, and no other package moves with it.
-- Future candidates only if they meet the rule: e.g. a model family that needs a different runtime becomes a new provider (`Microsoft.AI.Local.<Task>.<Runtime>`, with its own infrastructure package if its plumbing is shared); bundled weights become `Microsoft.AI.Local.Models.<ModelName>`. None of these change app code beyond the handle, because handles stay in the task's catalog class.
+- All inbox and Foundry Local models of a task ship in the task's package. That covers Microsoft's and OSS models alike.
+- Shared provider plumbing lives once per provider in `Microsoft.AI.Local.Windows` and `Microsoft.AI.Local.Foundry`.
+- Future candidates: a model family that needs a different runtime becomes a new provider (with its own infrastructure package if its plumbing is shared) whose models are added to the task packages; bundled weights become `Microsoft.AI.Local.Models.<ModelName>`. None of these change app code beyond the handle, because handles stay in the task's catalog class.
 
 ### 7.3 Versioning
 
-- **Each task family versions independently.** A task contract package and its provider packages share one version (`eng/Versions.props`), and a breaking change in one task's API is a major version of that task family only. Other tasks, the core, and the provider infrastructure packages keep their versions.
-- **Task provider packages ship with their task contract package.** Adding a model to a manifest is a minor version of the task family. A provider package depends on its task contract package at the same version; the provider package's next major version follows the contract's.
+- **Each task package versions independently** (`eng/Versions.props`), and a breaking change in one task's API is a major version of that task package only. Other tasks, the core, and the provider infrastructure packages keep their versions.
+- **Adding a model to a manifest is a minor version of its task package.** The handle and its implementation ship together, so they can't skew.
 - **The core and the provider infrastructure packages are the shared foundation.** They follow SemVer strictly and evolve additively (default interface members, new types); a major version of the core is a coordinated release of every package.
-- **Version skew is reported, not thrown.** If an app's task package lists a model that its (older) provider package doesn't implement yet, the handle reports `MissingAppRequirement` with "update the package" guidance.
-- **Underlying SDKs are declared at the lowest version a package needs.** NuGet resolves the highest minimum across an app's packages, so declaring a low minimum lets apps move to newer SDK builds. This is what lets experimental APIs coexist with stable ones. `2.5.4-experimental` of `Microsoft.WindowsAppSDK.AI` sorts *below* the stable `2.5.5`, so the stable Windows packages declare `2.4.4`. An app that uses speech then resolves `2.5.4-experimental` for every Windows package, and an app that doesn't keeps a stable version. If another reference forces a stable version anyway, build warning `MSAILOCAL104` and a `MissingAppRequirement` explain the problem instead of a missing-type crash.
+- **Underlying SDKs are declared at the lowest version a package needs.** NuGet resolves the highest minimum across an app's packages, so declaring a low minimum lets apps move to newer SDK builds. This is what lets experimental APIs coexist with stable ones. `2.5.4-experimental` of `Microsoft.WindowsAppSDK.AI` sorts *below* the stable `2.5.5`, so the other task packages declare `2.4.4`. An app that uses speech (`Microsoft.AI.Local.SpeechToText`) then resolves `2.5.4-experimental` for every package, and an app that doesn't keeps a stable version. If another reference forces a stable version anyway, build warning `MSAILOCAL104` and a `MissingAppRequirement` explain the problem instead of a missing-type crash.
 
 ---
 
@@ -461,11 +447,11 @@ Packages split along two axes, for different reasons.
 **Mechanisms:**
 - The core's only dependencies are the `Microsoft.Extensions.*.Abstractions` packages. Public APIs never expose Betalgo/OpenAI, ORT, or WinRT types (except in Windows-TFM extension methods, which use only Windows SDK projections that come with the TFM).
 - Providers use **only `PackageReference`s whose closure is understood**. `Microsoft.AI.Local.Windows` references `Microsoft.WindowsAppSDK.AI` (the WinAppSDK component package), **not** the `Microsoft.WindowsAppSDK` metapackage.
-- Task packages split the API surface too: an app only references the task contract packages its providers bring in, so an OCR-only app carries no text-generation, embedding or speech API.
-- No reflection-based provider discovery. Model handles are static, strongly typed members of the task packages, and provider packages are registered by generated code in the app (§5.6), so trimming and Native AOT work and nothing gets loaded behind the developer's back.
+- Task packages split the API surface and the dependencies: an app only references the task packages it uses, so an OCR-only app carries no text-generation, embedding or speech API, and no Foundry Local. Tasks with Foundry models do bring Foundry Local (and ORT) even if the app only uses their inbox models; that's the trade-off for one package per task (§7.2).
+- No reflection-based provider discovery. Model handles are static, strongly typed members of the task packages, bound to their implementation by generated code in the same package (§5.6), so trimming and Native AOT work and nothing gets loaded behind the developer's back.
 
 **Enforcement in CI (dependency-closure tests):**
-- `tests/DependencyClosure/InboxOnlyApp`: restore an app that references the Windows task provider packages, then assert that `project.assets.json` and the publish output contain **no** `onnxruntime*`, `Microsoft.ML.OnnxRuntime*`, `Microsoft.AI.Foundry.Local*`, `Microsoft.WindowsAppSDK.ML`, or EP binaries.
+- `tests/DependencyClosure/InboxOnlyApp`: restore an app that references the inbox-only task packages (OCR, imaging, text skills), then assert that `project.assets.json` and the publish output contain **no** `onnxruntime*`, `Microsoft.ML.OnnxRuntime*`, `Microsoft.AI.Foundry.Local*`, `Microsoft.WindowsAppSDK.ML`, or EP binaries.
 - `tests/DependencyClosure/FoundryOnlyApp` on macOS: assert it contains **no** WinAppSDK packages.
 - Track publish-size budgets per sample app and fail on regressions.
 
@@ -480,14 +466,14 @@ The `InboxOnlyApp` closure test stays in place as a regression guard.
 
 ## 9. Cross-platform (P0-5)
 
-- **True cross-platform package:** each Foundry task package (e.g. `Microsoft.AI.Local.TextGeneration.Foundry`) targets `net8.0`, and its Foundry Local runtime carries native assets per RID. A developer installs **one** package per task and writes code **once**. The same `LanguageModels.Phi4Mini` / `SpeechToTextModels.WhisperTiny` code runs on Windows and macOS (Apple silicon). Linux is supported wherever Foundry Local supports it.
+- **True cross-platform package:** each task package with Foundry models (e.g. `Microsoft.AI.Local.TextGeneration`) has a `net8.0` build, and its Foundry Local runtime carries native assets per RID. A developer installs **one** package per task and writes code **once**. The same `LanguageModels.Phi4Mini` / `SpeechToTextModels.WhisperTiny` code runs on Windows and macOS (Apple silicon). Linux is supported wherever Foundry Local supports it.
 - **Selected cross-platform models (initial):** Foundry text generation (Phi-4-mini, Qwen 2.5 family), speech-to-text (Whisper), and embeddings. Each "cross-plat" model is validated by the conformance suite (§11) on `windows-latest` (x64 + arm64) and `macos-latest` (arm64) before it's marked cross-plat in docs.
 - **Native-specific API optimizations (P0-5b):** Multi-targeting a `net8.0-windows10.0.19041.0` TFM adds:
   - `SoftwareBitmap` / `ImageBuffer` overloads,
   - WinML EP control (`FoundryProviderOptions.ExecutionProviders`),
   - Windows-only options.
   The portable code path still compiles and runs on every platform.
-- **Inbox models on macOS:** the `net8.0` build of each Windows task package (e.g. `Microsoft.AI.Local.TextGeneration.Windows`) lets a cross-platform project reference `LanguageModels.PhiSilica` without `#if` or conditional `PackageReference`s. On macOS it reports `NotSupportedOnPlatform`, which makes the §6.5 fallback pattern work everywhere. This is the agreed behavior (see [§13](#13-decisions)).
+- **Inbox models on macOS:** the `net8.0` build of each task package with inbox models (e.g. `Microsoft.AI.Local.TextGeneration`) lets a cross-platform project reference `LanguageModels.PhiSilica` without `#if` or conditional `PackageReference`s. On macOS it reports `NotSupportedOnPlatform`, which makes the §6.5 fallback pattern work everywhere. This is the agreed behavior (see [§13](#13-decisions)).
   - Caveat: a plain `net8.0` app running *on Windows* also gets the stub. To use inbox models, the app has to target a Windows TFM (already required by WinAppSDK). This is documented, and an analyzer flags it.
 
 ---
@@ -522,7 +508,7 @@ var flModel = chat.GetService<Microsoft.AI.Foundry.Local.IModel>();           //
 All packages are annotated `IsTrimmable`/`IsAotCompatible`. CsWinRT projections are AOT-safe. The Foundry adapter avoids reflection-based JSON (it uses source-generated `JsonSerializerContext`).
 
 ### 10.7 Versioning
-- Every package uses SemVer, and each task family versions independently (see [§7.3](#73-versioning)). Contracts are stable after 1.0 of their task, and additions go through default interface members or new interfaces.
+- Every package uses SemVer, and each task package versions independently (see [§7.3](#73-versioning)). Contracts are stable after 1.0 of their task, and additions go through default interface members or new interfaces.
 - All packages target **`net8.0`** (plus `net8.0-windows10.0.19041.0` where Windows-specific surface is needed). No other TFMs are shipped; apps on later .NET versions consume the `net8.0` assets.
 - Providers declare a minimum core version and pin compatible ranges of their underlying SDK.
 - Experimental contracts (e.g. while MEAI `ISpeechToTextClient` is experimental) carry `[Experimental("MSAILOCAL001")]`.
@@ -534,21 +520,19 @@ All packages are annotated `IsTrimmable`/`IsAotCompatible`. CsWinRT projections 
 ```
 /src
   Microsoft.AI.Local/                  core: acquisition, media, errors, selection, model catalog, provider SDK
-  Microsoft.AI.Local.<Task>/           task contract packages (11): contract, catalog class, adapters, DI
-  Microsoft.AI.Local.<Task>.Windows/   Windows task provider packages (10)
-  Microsoft.AI.Local.<Task>.Foundry/   Foundry task provider packages (3)
+  Microsoft.AI.Local.<Task>/           task packages (11): contract, catalog class, adapters, DI, Windows/ and Foundry/ models
   Microsoft.AI.Local.Windows/          Windows provider infrastructure (WinAppSDK.AI, LAF, base classes)
   Microsoft.AI.Local.Foundry/          Foundry provider infrastructure (Foundry Local runtime, base classes)
-  Microsoft.AI.Local.Analyzers/        provider-registration generator + MSAILOCAL101-103/201 (packed into the core)
-  Microsoft.AI.Local.Catalog.Generators/  build-only generator: catalog classes and provider descriptors from the manifests
+  Microsoft.AI.Local.Analyzers/        analyzers MSAILOCAL101-103 (packed into the core)
+  Microsoft.AI.Local.Catalog.Generators/  build-only generator: catalog classes and model descriptors from the manifests
   Microsoft.AI.Local.Audio/            microphone capture and live audio streams for speech models (§5.3.1)
   Shared/                              internal helpers compiled into several task packages (keeps them independent)
   Directory.Build.props/.targets       package conventions derived from the project name
 /eng
   catalog/<provider>-models.json       checked-in list of each provider's models (§5.6)
-  Versions.props                       one version per task family (§7.3)
+  Versions.props                       one version per task package (§7.3)
 /tests
-  Microsoft.AI.Local.Tests/            catalog and provider-registration tests, run like an app
+  Microsoft.AI.Local.Tests/            catalog binding tests, run like an app
   Microsoft.AI.Local.Analyzers.Tests/  generator and analyzer tests
   Conformance/                         one abstract suite per task type; each provider × model must pass
   DependencyClosure/                   inbox-only / foundry-only apps asserting dependency closure (§8)
@@ -583,13 +567,13 @@ All provider adapters stay in this repo, and the underlying SDKs are consumed as
 
 | # | Topic | Decision |
 |---|---|---|
-| 1 | Naming | **`Microsoft.AI.Local.*`**: the core `Microsoft.AI.Local`, task packages `Microsoft.AI.Local.<Task>`, task provider packages `Microsoft.AI.Local.<Task>.<Provider>`, and provider infrastructure `Microsoft.AI.Local.Windows` / `Microsoft.AI.Local.Foundry`. |
+| 1 | Naming | **`Microsoft.AI.Local.*`**: the core `Microsoft.AI.Local`, task packages `Microsoft.AI.Local.<Task>` (one per task, containing every provider's models), and provider infrastructure `Microsoft.AI.Local.Windows` / `Microsoft.AI.Local.Foundry`. |
 | 2 | Ownership | **Provider adapters live in this repo.** The Foundry Local SDK and WinAppSDK are consumed as plain dependencies. |
-| 3 | Model handles | **Strongly typed only, one catalog class per task across providers** (`LanguageModels.PhiSilica`, `LanguageModels.Phi4Mini`, `ImageTextRecognitionModels.WindowsDefault`). No string-based model lookup in the public API. Handles are generated from checked-in manifests; a missing provider package is a build warning (`MSAILOCAL201`) and `MissingAppRequirement` at run time; retirement uses `[Obsolete]` plus the `Retired` status (see [§5.6](#56-strongly-typed-model-handles-and-the-model-catalog)). |
-| 4 | Windows `net8.0` stub | **Accepted.** Cross-platform projects can reference the Windows task packages, and inbox handles report `NotSupportedOnPlatform` off Windows (see [§9](#9-cross-platform-p0-5)). |
-| 5 | Inbox embeddings / speech-to-text | **Speech-to-text added** (experimental, `Microsoft.AI.Local.SpeechToText.Windows`) with no contract change. Embeddings remain Foundry-only. |
+| 3 | Model handles | **Strongly typed only, one catalog class per task across providers** (`LanguageModels.PhiSilica`, `LanguageModels.Phi4Mini`, `ImageTextRecognitionModels.WindowsDefault`). No string-based model lookup in the public API. Handles are generated from checked-in manifests; every handle is implemented in its task package; retirement uses `[Obsolete]` plus the `Retired` status (see [§5.6](#56-strongly-typed-model-handles-and-the-model-catalog)). |
+| 4 | Windows `net8.0` stub | **Accepted.** Cross-platform projects can reference task packages with inbox models, and inbox handles report `NotSupportedOnPlatform` off Windows (see [§9](#9-cross-platform-p0-5)). |
+| 5 | Inbox embeddings / speech-to-text | **Speech-to-text added** (experimental, in `Microsoft.AI.Local.SpeechToText`) with no contract change. Embeddings remain Foundry-only. |
 | 6 | Target framework | **`net8.0`** (plus `net8.0-windows10.0.19041.0` for Windows-specific surface). |
-| 7 | Package granularity | **One package per task type, and one per task and provider**, so each task's API versions independently (see [§7](#7-package-layout-split-rule-p0-6-and-versioning)). |
+| 7 | Package granularity | **One package per task type, containing every provider's models of the task**, so each task's API versions independently and every handle works with one package reference (see [§7](#7-package-layout-split-rule-p0-6-and-versioning)). |
 | 8 | Audio input | **Capture is separate from recognition.** Audio sources are WAV streams from `Microsoft.AI.Local.Audio`, which every speech model accepts through the standard `ISpeechToTextClient` (see [§5.3.1](#531-audio-input-capture-is-separate-from-recognition)). |
 
 ---
@@ -607,7 +591,8 @@ All provider adapters stay in this repo, and the underlying SDKs are consumed as
 | One catalog class per provider (`WindowsModels.PhiSilica`, `FoundryModels.Phi4Mini`) | Mixes unrelated tasks (chat, OCR, segmentation) in one list, and a static class can't span packages, so a second Windows package (e.g. a new speech model) couldn't add to `WindowsModels`. Grouping handles by task keeps each list focused and lets packages split without API changes. |
 | One package with every task's contracts | A breaking change in one fast-moving task (text generation) would force a major version on stable ones (OCR). Task packages version independently (§7.3). |
 | Task-first handles through C# 14 static extension members (each provider adds `LanguageModels.X`) | Every app would need `<LangVersion>14</LangVersion>` (`net8.0` defaults to C# 12). Generating the catalog into the task packages gives the same experience on any C# version. |
-| Reflection-based registration (scan loaded assemblies for providers) | Breaks trimming/AOT and misses providers whose assemblies were never loaded. The generated module initializer is explicit code. |
+| Reflection-based registration (scan loaded assemblies for providers) | Breaks trimming/AOT and misses providers whose assemblies were never loaded. Handles are bound by generated code in the task package. |
+| One package per task and provider (`Microsoft.AI.Local.TextGeneration.Windows`, `.Foundry`), registered with the catalog at app startup | Keeps each provider's dependencies out of apps that don't use it, but a handle only works once the app also references the right provider package, which needs a registration mechanism, a missing-provider analyzer and placeholder handles. One package per task is simpler to adopt: every handle of a catalog class works as soon as the task package is referenced. |
 
 ---
 
@@ -616,7 +601,7 @@ All provider adapters stay in this repo, and the underlying SDKs are consumed as
 | Phase | Deliverables | Exit criteria |
 |---|---|---|
 | **0 — Spike** (≈3–4 wks) | Core contracts for acquisition + text generation; Phi Silica and Foundry `IChatClient` adapters; `SwitchableChat` sample; dependency-closure test | 3-line switch shown; inbox-only app has 0 ORT binaries; Foundry sample runs on Windows + macOS |
-| **1 — Preview 1** | Core, provider infrastructure, and the text generation, embeddings and speech-to-text task packages with their Windows/Foundry provider packages; model catalog; conformance suite; DI; analyzers; docs | Conformance passes for all launch models on the CI matrix; API review sign-off |
+| **1 — Preview 1** | Core, provider infrastructure, and the text generation, embeddings and speech-to-text task packages with their Windows and Foundry Local models; model catalog; conformance suite; DI; analyzers; docs | Conformance passes for all launch models on the CI matrix; API review sign-off |
 | **2 — Preview 2** | Text skills (summarize/rewrite/text→table) with LLM-backed adapters; imaging contracts (OCR, description, super-resolution, segmentation, object removal) with Windows fast paths; hybrid selection | All §5.2 rows implemented for at least one provider; `WinUI.ImageTools` sample |
 | **3 — GA** | AOT/trimming validation, telemetry, perf baselines, servicing/versioning policy, upstream MEAI proposals filed | Perf within agreed % of native SDK calls; no P0/P1 bugs; P0-3…P0-6 verified by automated tests |
 
