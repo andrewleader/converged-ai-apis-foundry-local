@@ -12,18 +12,10 @@ internal static class TestCompilations
     public const string AttributesSource = """
         namespace Microsoft.AI.Local.Providers
         {
-            [System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true)]
-            public sealed class LocalModelProviderAttribute(string packageId, System.Type registrationType) : System.Attribute
-            {
-                public string PackageId { get; } = packageId;
-                public System.Type RegistrationType { get; } = registrationType;
-            }
-
             [System.AttributeUsage(System.AttributeTargets.Property)]
-            public sealed class RequiresLocalModelProviderAttribute(string packageId) : System.Attribute
+            public sealed class LocalModelProviderAttribute(string providerName) : System.Attribute
             {
-                public string PackageId { get; } = packageId;
-                public string? ProviderName { get; set; }
+                public string ProviderName { get; } = providerName;
             }
         }
         """;
@@ -34,35 +26,13 @@ internal static class TestCompilations
         {
             public static class LanguageModels
             {
-                [RequiresLocalModelProvider("Microsoft.AI.Local.TextGeneration.Foundry", ProviderName = "Foundry")]
+                [LocalModelProvider("Foundry")]
                 public static object Qwen35_08B => new object();
 
-                [RequiresLocalModelProvider("Microsoft.AI.Local.TextGeneration.Windows", ProviderName = "Windows")]
+                [LocalModelProvider("Windows")]
                 public static object PhiSilica => new object();
 
                 public static object NotACatalogHandle => new object();
-            }
-        }
-        """;
-
-    public const string FoundryProviderSource = """
-        [assembly: Microsoft.AI.Local.Providers.LocalModelProvider("Microsoft.AI.Local.TextGeneration.Foundry", typeof(Microsoft.AI.Local.Foundry.FoundryTextGenerationRegistration))]
-        namespace Microsoft.AI.Local.Foundry
-        {
-            public static class FoundryTextGenerationRegistration
-            {
-                public static void Register() { }
-            }
-        }
-        """;
-
-    public const string WindowsProviderSource = """
-        [assembly: Microsoft.AI.Local.Providers.LocalModelProvider("Microsoft.AI.Local.TextGeneration.Windows", typeof(Microsoft.AI.Local.Windows.WindowsTextGenerationRegistration))]
-        namespace Microsoft.AI.Local.Windows
-        {
-            public static class WindowsTextGenerationRegistration
-            {
-                public static void Register() { }
             }
         }
         """;
@@ -77,33 +47,18 @@ internal static class TestCompilations
 
     private static readonly MetadataReference Core = Library("Microsoft.AI.Local", AttributesSource);
     private static readonly MetadataReference Catalog = Library("Microsoft.AI.Local.TextGeneration", CatalogSource, Core);
-    private static readonly MetadataReference Foundry = Library("Microsoft.AI.Local.TextGeneration.Foundry", FoundryProviderSource, Core);
-    private static readonly MetadataReference Windows = Library("Microsoft.AI.Local.TextGeneration.Windows", WindowsProviderSource, Core);
 
-    /// <summary>Creates an app compilation that references the core and the TextGeneration catalog, plus the given providers.</summary>
-    public static CSharpCompilation App(string source, bool foundry = false, bool windows = false)
-    {
-        List<MetadataReference> references = [.. Framework, Core, Catalog];
-        if (foundry)
-        {
-            references.Add(Foundry);
-        }
-
-        if (windows)
-        {
-            references.Add(Windows);
-        }
-
-        return CSharpCompilation.Create(
+    /// <summary>Creates an app compilation that references the core and the TextGeneration task package.</summary>
+    public static CSharpCompilation App(string source) =>
+        CSharpCompilation.Create(
             "App",
             [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest), path: "Program.cs")],
-            references,
+            [.. Framework, Core, Catalog],
             new CSharpCompilationOptions(OutputKind.ConsoleApplication, nullableContextOptions: NullableContextOptions.Enable));
-    }
 
-    public static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(Compilation compilation, DiagnosticAnalyzer analyzer, Dictionary<string, string> properties)
+    public static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(Compilation compilation, DiagnosticAnalyzer analyzer, Dictionary<string, string> properties, params AdditionalText[] additionalFiles)
     {
-        var options = new AnalyzerOptions([], new TestOptionsProvider(properties));
+        var options = new AnalyzerOptions([.. additionalFiles], new TestOptionsProvider(properties));
         return await compilation.WithAnalyzers([analyzer], options).GetAnalyzerDiagnosticsAsync(TestContext.Current.CancellationToken);
     }
 

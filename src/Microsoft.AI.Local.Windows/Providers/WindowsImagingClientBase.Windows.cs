@@ -3,7 +3,7 @@ using Microsoft.Graphics.Imaging;
 namespace Microsoft.AI.Local.Windows.Providers;
 
 /// <summary>The base class of the clients that wrap a Windows imaging API (OCR, super-resolution, ...).</summary>
-/// <remarks>This type is intended for Windows task provider packages.</remarks>
+/// <remarks>This type is intended for the task packages that implement Windows models.</remarks>
 public abstract class WindowsImagingClientBase : ILocalAIClient
 {
     private readonly IDisposable? _native;

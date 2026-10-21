@@ -3,7 +3,7 @@ using Microsoft.AI.Foundry.Local;
 namespace Microsoft.AI.Local.Foundry.Providers;
 
 /// <summary>Maps Foundry Local failures to the shared exception hierarchy and availability statuses.</summary>
-/// <remarks>This type is intended for Foundry task provider packages.</remarks>
+/// <remarks>This type is intended for the task packages that implement Foundry Local models.</remarks>
 public static class FoundryErrors
 {
     /// <summary>Gets a value indicating whether <paramref name="exception"/> means Foundry Local can't run in this process at all.</summary>

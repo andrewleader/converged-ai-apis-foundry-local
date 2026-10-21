@@ -16,6 +16,6 @@
     </PropertyGroup>
     <Warning Code="MSAILOCAL104"
              Condition="'$(_MicrosoftAILocalWindowsAppSdkAIVersion)' != '' and !$(_MicrosoftAILocalWindowsAppSdkAIVersion.Contains('experimental'))"
-             Text="Microsoft.AI.Local.SpeechToText.Windows needs the experimental Windows App SDK, but this project resolves Microsoft.WindowsAppSDK.AI $(_MicrosoftAILocalWindowsAppSdkAIVersion), which doesn't include speech recognition, so SpeechToTextModels.WindowsDefault reports MissingAppRequirement. Reference an experimental Microsoft.WindowsAppSDK.AI (or Microsoft.WindowsAppSDK) package explicitly, or remove the reference that raises it to a stable version." />
+             Text="Microsoft.AI.Local.SpeechToText needs the experimental Windows App SDK for SpeechToTextModels.WindowsDefault, but this project resolves Microsoft.WindowsAppSDK.AI $(_MicrosoftAILocalWindowsAppSdkAIVersion), which doesn't include speech recognition, so SpeechToTextModels.WindowsDefault reports MissingAppRequirement. Reference an experimental Microsoft.WindowsAppSDK.AI (or Microsoft.WindowsAppSDK) package explicitly, or remove the reference that raises it to a stable version." />
   </Target>
 </Project>

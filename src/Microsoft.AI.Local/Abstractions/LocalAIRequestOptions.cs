@@ -6,7 +6,7 @@ namespace Microsoft.AI.Local;
 /// Base class for the per-request options bags of the contracts defined by this library.
 /// </summary>
 /// <remarks>
-/// Provider-specific settings are set through typed extension methods supplied by the provider package
+/// Provider-specific settings are set through typed extension methods supplied by the provider's packages
 /// (for example <c>options.WithWindowsContentFilter(...)</c>), which store their values in
 /// <see cref="AdditionalProperties"/>. Settings a provider can't honor are ignored and logged, unless
 /// <see cref="LocalAIOptions.ThrowOnUnsupportedOptions"/> is enabled.

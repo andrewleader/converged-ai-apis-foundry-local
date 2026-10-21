@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The text to table contract of Microsoft.AI.Local: ITextToTableConverter, ITextToTableModel and the TextToTableModels catalog, plus an adapter that converts with any chat model. Pure managed. Add a provider package such as Microsoft.AI.Local.TextToTable.Windows to get models.</Description>
+    <Description>Text to table for Microsoft.AI.Local: ITextToTableConverter, ITextToTableModel and the TextToTableModels catalog with every model of the task: the Windows inbox models (Windows AI APIs on Copilot+ PCs, delivered and serviced by Windows; no ONNX Runtime in the app; the net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if). Also adapts any chat model to text-to-table conversion.</Description>
   </PropertyGroup>
 
 </Project>

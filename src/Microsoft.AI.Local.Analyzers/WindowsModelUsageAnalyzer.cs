@@ -18,21 +18,21 @@ namespace Microsoft.AI.Local.Analyzers;
 /// identity, and the <c>systemAIModels</c> manifest capability.
 /// </summary>
 /// <remarks>
-/// Only executables that reference the Windows provider package of the handle are checked: a library is fine on any
-/// target framework because the app that consumes it decides which build of the provider runs, and a missing provider
-/// package is reported by MSAILOCAL201. Apps that never touch the inbox models see nothing.
+/// Only executables are checked: a library is fine on any target framework because the app that consumes it decides
+/// which build of the task packages runs. Apps that never touch the inbox models see nothing.
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WindowsModelUsageAnalyzer : DiagnosticAnalyzer
 {
     private const string Category = "Microsoft.AI.Local.Windows";
     private const string WindowsProviderName = "Windows";
+    private const string ProviderAttributeName = "Microsoft.AI.Local.Providers.LocalModelProviderAttribute";
     private const string HelpLink = "https://github.com/andrewleader/converged-ai-apis-foundry-local/blob/main/docs/diagnostics.md";
 
     internal static readonly DiagnosticDescriptor NonWindowsTargetFramework = new(
         "MSAILOCAL101",
         "Windows inbox models need a Windows target framework",
-        "'{0}' targets '{1}', so it gets the portable build of the Windows provider packages and every Windows model handle reports NotSupportedOnPlatform, even on Windows. Target a Windows TFM (for example net8.0-windows10.0.19041.0) to use the inbox models.",
+        "'{0}' targets '{1}', so it gets the portable build of the task packages and every Windows model handle reports NotSupportedOnPlatform, even on Windows. Target a Windows TFM (for example net8.0-windows10.0.19041.0) to use the inbox models.",
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
@@ -75,18 +75,32 @@ public sealed class WindowsModelUsageAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(OnCompilationStart);
     }
 
-    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    internal static bool IsExecutable(AnalyzerOptions options)
     {
-        var requiresAttribute = context.Compilation.GetTypeByMetadataName(LocalModelProviders.RequiresProviderAttributeName);
-        if (requiresAttribute is null || !MissingProviderAnalyzer.IsExecutable(context.Options))
+        options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue("build_property.OutputType", out var outputType);
+        return string.Equals(outputType, "Exe", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(outputType, "WinExe", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? GetProviderName(IPropertySymbol property, INamedTypeSymbol providerAttribute)
+    {
+        foreach (var attribute in property.GetAttributes())
         {
-            return;
+            if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, providerAttribute) &&
+                attribute.ConstructorArguments.Length == 1 &&
+                attribute.ConstructorArguments[0].Value is string name)
+            {
+                return name;
+            }
         }
 
-        var referenced = new HashSet<string>(
-            LocalModelProviders.GetReferencedProviders(context.Compilation).Select(p => p.PackageId),
-            StringComparer.OrdinalIgnoreCase);
-        if (referenced.Count == 0)
+        return null;
+    }
+
+    private static void OnCompilationStart(CompilationStartAnalysisContext context)
+    {
+        var providerAttribute = context.Compilation.GetTypeByMetadataName(ProviderAttributeName);
+        if (providerAttribute is null || !IsExecutable(context.Options))
         {
             return;
         }
@@ -104,9 +118,7 @@ public sealed class WindowsModelUsageAnalyzer : DiagnosticAnalyzer
             operationContext =>
             {
                 var property = ((IPropertyReferenceOperation)operationContext.Operation).Property;
-                if (LocalModelProviders.GetRequiredProvider(property.OriginalDefinition, requiresAttribute) is not { } required ||
-                    required.ProviderName != WindowsProviderName ||
-                    !referenced.Contains(required.PackageId))
+                if (!string.Equals(GetProviderName(property.OriginalDefinition, providerAttribute), WindowsProviderName, StringComparison.Ordinal))
                 {
                     return;
                 }

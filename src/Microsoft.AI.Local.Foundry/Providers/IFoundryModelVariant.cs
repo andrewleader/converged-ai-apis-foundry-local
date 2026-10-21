@@ -1,10 +1,10 @@
 namespace Microsoft.AI.Local.Foundry.Providers;
 
 /// <summary>
-/// A loaded Foundry Local model variant (one device / execution provider / quantization), passed to the Foundry task
-/// provider packages to create clients.
+/// A loaded Foundry Local model variant (one device / execution provider / quantization), passed to the Foundry Local
+/// model implementations of the task packages to create clients.
 /// </summary>
-/// <remarks>This type is intended for Foundry task provider packages. App code reaches the native model through <c>GetService</c>.</remarks>
+/// <remarks>This type is intended for the task packages that implement Foundry Local models. App code reaches the native model through <c>GetService</c>.</remarks>
 public interface IFoundryModelVariant
 {
     /// <summary>Gets the Foundry Local variant identifier, for example <c>Phi-4-mini-instruct-generic-cpu:1</c>.</summary>

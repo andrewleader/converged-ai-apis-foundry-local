@@ -11,9 +11,8 @@ public interface ITextGenerationModel : ILocalModel<IChatClient>;
 /// <c>LanguageModels.Phi4Mini</c> (Foundry Local).
 /// </summary>
 /// <remarks>
-/// Getting a handle does no I/O. Each handle's documentation names the provider package it needs, for example
-/// Microsoft.AI.Local.TextGeneration.Foundry. Without that package the handle reports
-/// <see cref="ModelAvailabilityStatus.MissingAppRequirement"/> and analyzer MSAILOCAL201 warns at build time.
+/// Getting a handle does no I/O. This package contains every provider's models of the task, so every handle is ready to
+/// use; <see cref="ILocalModel.GetAvailabilityAsync"/> reports whether the model can run on the current device and app.
 /// </remarks>
 public static partial class LanguageModels
 {

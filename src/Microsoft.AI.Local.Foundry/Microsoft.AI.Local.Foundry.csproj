@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>$(PortableTargetFramework)</TargetFramework>
     <RootNamespace>Microsoft.AI.Local.Foundry</RootNamespace>
-    <Description>Shared infrastructure of the Foundry Local providers for Microsoft.AI.Local: the Foundry Local runtime (lazy initialization, execution-provider download, model download and load), provider options, device selection (WithDevice) and the base classes the Microsoft.AI.Local.*.Foundry task packages build on. Contains no models; reference a task package such as Microsoft.AI.Local.TextGeneration.Foundry. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
+    <Description>Shared infrastructure of the Foundry Local providers for Microsoft.AI.Local: the Foundry Local runtime (lazy initialization, execution-provider download, model download and load), provider options, device selection (WithDevice) and the base classes the task packages build their Foundry Local models on. Contains no models; reference a task package such as Microsoft.AI.Local.TextGeneration. Cross-platform: Windows, macOS (Apple silicon) and Linux.</Description>
   </PropertyGroup>
 
   <ItemGroup>

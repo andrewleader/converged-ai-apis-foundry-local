@@ -1,7 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The speech to text contract of Microsoft.AI.Local: ISpeechToTextModel and the SpeechToTextModels catalog; the client is Microsoft.Extensions.AI's ISpeechToTextClient (experimental). Pure managed. Add a provider package such as Microsoft.AI.Local.SpeechToText.Foundry to get models.</Description>
+    <Description>Speech to text for Microsoft.AI.Local: ISpeechToTextModel and the SpeechToTextModels catalog with every model of the task: the Windows inbox speech recognizer (SpeechToTextModels.WindowsDefault, on the experimental Windows App SDK; the net8.0 build reports NotSupportedOnPlatform), and the Foundry Local models (downloaded on first use and run in-process on Windows, macOS (Apple silicon) and Linux). The client is Microsoft.Extensions.AI's ISpeechToTextClient (experimental). Accepts files, headerless PCM and live audio, including Microsoft.AI.Local.Audio's microphone capture.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.AI.Local.Audio\Microsoft.AI.Local.Audio.csproj" />
+  </ItemGroup>
+
+  <!--
+    Microsoft.Windows.AI.Speech ships only in the experimental Windows App SDK AI package. Only this package moves to the
+    experimental channel; the other task packages keep a stable minimum that is lower than it, so NuGet resolves the
+    experimental build in apps that use speech (see Directory.Packages.props).
+  -->
+  <ItemGroup Condition="'$(TargetPlatformIdentifier)' == 'windows'">
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" VersionOverride="$(MicrosoftWindowsAppSDKAIExperimentalVersion)" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- CS8305: the Windows speech APIs are [Experimental]. This package wraps them on purpose; apps opt in through
+         SpeechToTextModels, which is [Experimental("MSAILOCAL001")]. -->
+    <NoWarn>$(NoWarn);CS8305</NoWarn>
   </PropertyGroup>
 
 </Project>

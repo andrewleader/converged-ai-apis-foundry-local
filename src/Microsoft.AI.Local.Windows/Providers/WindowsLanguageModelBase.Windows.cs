@@ -6,7 +6,7 @@ using Windows.Foundation;
 namespace Microsoft.AI.Local.Windows.Providers;
 
 /// <summary>The base class of the Windows models that run on Phi Silica (<see cref="LanguageModel"/>).</summary>
-/// <remarks>This type is intended for Windows task provider packages.</remarks>
+/// <remarks>This type is intended for the task packages that implement Windows models.</remarks>
 /// <typeparam name="TClient">The inference client contract.</typeparam>
 public abstract class WindowsLanguageModelBase<TClient> : WindowsModelBase<TClient>
     where TClient : class

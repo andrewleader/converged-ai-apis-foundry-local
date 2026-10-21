@@ -8,7 +8,7 @@ namespace Microsoft.AI.Local.Windows.Providers;
 /// The base class of Windows inbox model handles: checks package identity, the Limited Access Feature and the native
 /// ready state, waits for Windows to deliver the model (<c>EnsureReadyAsync</c>), then creates the client.
 /// </summary>
-/// <remarks>This type is intended for Windows task provider packages. App code uses the <see cref="ILocalModel"/> interfaces.</remarks>
+/// <remarks>This type is intended for the task packages that implement Windows models. App code uses the <see cref="ILocalModel"/> interfaces.</remarks>
 /// <typeparam name="TClient">The inference client contract.</typeparam>
 public abstract class WindowsModelBase<TClient> : LocalModelBase<TClient>
     where TClient : class

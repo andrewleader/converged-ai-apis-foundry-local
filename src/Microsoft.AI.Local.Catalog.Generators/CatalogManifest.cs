@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace Microsoft.AI.Local.Catalog.Generators;
 
 /// <summary>
-/// A task type: the manifest name, the package segment (<c>Microsoft.AI.Local.&lt;Segment&gt;</c>), the catalog class,
+/// A task type: the manifest name, the task package segment (<c>Microsoft.AI.Local.&lt;Segment&gt;</c>), the catalog class,
 /// the model interface and the client contract.
 /// </summary>
 internal sealed class CatalogTask(string name, string segment, string catalogClass, string modelInterface, string clientType, string text)
@@ -41,9 +41,6 @@ internal sealed class CatalogTask(string name, string segment, string catalogCla
 
     public string Text { get; } = text;
 
-    /// <summary>Gets the NuGet package ID of the task's contract package.</summary>
-    public string Package => "Microsoft.AI.Local." + Segment;
-
     public static CatalogTask? Find(string name) => All.FirstOrDefault(t => t.Name == name);
 
     public static CatalogTask? FindBySegment(string segment) => All.FirstOrDefault(t => string.Equals(t.Segment, segment, StringComparison.OrdinalIgnoreCase));
@@ -54,18 +51,12 @@ internal sealed class CatalogProvider(string name, string @namespace, string idP
 {
     public string Name { get; } = name;
 
-    /// <summary>Gets the namespace of the provider's types, for example <c>Microsoft.AI.Local.Foundry</c>.</summary>
+    /// <summary>Gets the namespace of the provider's types (and of its <c>&lt;Provider&gt;ModelFactory</c>), for example <c>Microsoft.AI.Local.Foundry</c>.</summary>
     public string Namespace { get; } = @namespace;
 
     public string IdPrefix { get; } = idPrefix;
 
     public string? Remarks { get; } = remarks;
-
-    /// <summary>Gets the NuGet package ID that implements <paramref name="task"/> for this provider.</summary>
-    public string PackageFor(CatalogTask task) => task.Package + "." + Name;
-
-    /// <summary>Gets the full name of the registration type of the provider's <paramref name="task"/> package.</summary>
-    public string RegistrationTypeFor(CatalogTask task) => Namespace + "." + Name + task.Segment + "Registration";
 }
 
 /// <summary>A parsed and validated provider manifest (<c>eng/catalog/&lt;provider&gt;-models.json</c>).</summary>
@@ -285,10 +276,6 @@ internal sealed class CatalogModel(
     public CatalogProvider Provider { get; } = provider;
 
     public string Id => Provider.IdPrefix + "/" + Alias;
-
-    public string Package => Provider.PackageFor(Task);
-
-    public string RegistrationType => Provider.RegistrationTypeFor(Task);
 
     public string Alias { get; } = alias;
 

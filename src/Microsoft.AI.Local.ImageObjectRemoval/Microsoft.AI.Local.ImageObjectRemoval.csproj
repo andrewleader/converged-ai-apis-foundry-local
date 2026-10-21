@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The object removal contract of Microsoft.AI.Local: IImageObjectRemover, IObjectRemovalModel and the ImageObjectRemovalModels catalog. Pure managed. Add a provider package such as Microsoft.AI.Local.ImageObjectRemoval.Windows to get models.</Description>
+    <Description>Object removal for Microsoft.AI.Local: IImageObjectRemover, IObjectRemovalModel and the ImageObjectRemovalModels catalog with every model of the task: the Windows inbox models (Windows AI APIs on Copilot+ PCs, delivered and serviced by Windows; no ONNX Runtime in the app; the net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if).</Description>
   </PropertyGroup>
 
 </Project>

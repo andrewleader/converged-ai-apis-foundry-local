@@ -19,7 +19,7 @@ public static class FoundryModelExtensions
     /// <see cref="ModelAvailabilityStatus.NotSupportedOnDevice"/>.
     /// </returns>
     /// <exception cref="ArgumentException">
-    /// <paramref name="model"/> is not a Foundry model, or its Foundry task package isn't referenced.
+    /// <paramref name="model"/> is not a Foundry model.
     /// </exception>
     public static TModel WithDevice<TModel>(this TModel model, LocalDevice device)
         where TModel : ILocalModel
@@ -30,16 +30,9 @@ public static class FoundryModelExtensions
             throw new ArgumentOutOfRangeException(nameof(device), device, "Unknown device.");
         }
 
-        if (LocalModelCatalog.Resolve(model) is IFoundryModelHandle handle)
+        if (model is IFoundryModelHandle handle)
         {
             return (TModel)handle.WithDevice(device);
-        }
-
-        if (model.ProviderName == FoundryProvider.ProviderName)
-        {
-            throw new ArgumentException(
-                $"'{model.Id}' can't select a device because its Foundry provider package isn't referenced. GetAvailabilityAsync reports which package to add.",
-                nameof(model));
         }
 
         throw new ArgumentException($"'{model.Id}' is not a Foundry model. WithDevice applies to Foundry Local models.", nameof(model));
@@ -51,6 +44,6 @@ public static class FoundryModelExtensions
     public static LocalDevice? GetFoundryDevice(this ILocalModel model)
     {
         ArgumentNullException.ThrowIfNull(model);
-        return (LocalModelCatalog.Resolve(model) as IFoundryModelHandle)?.Device;
+        return (model as IFoundryModelHandle)?.Device;
     }
 }

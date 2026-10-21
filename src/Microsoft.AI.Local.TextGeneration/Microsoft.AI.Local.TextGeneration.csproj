@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The text generation contract of Microsoft.AI.Local: ITextGenerationModel and the LanguageModels catalog (LanguageModels.PhiSilica, LanguageModels.Phi4Mini, ...); the client is Microsoft.Extensions.AI's IChatClient. Pure managed. Add a provider package such as Microsoft.AI.Local.TextGeneration.Windows to get models.</Description>
+    <Description>Text generation (chat) for Microsoft.AI.Local: ITextGenerationModel and the LanguageModels catalog (LanguageModels.PhiSilica, LanguageModels.Phi4Mini, ...) with every model of the task: the Windows inbox models (Windows AI APIs on Copilot+ PCs, delivered and serviced by Windows; no ONNX Runtime in the app; the net8.0 build reports NotSupportedOnPlatform so cross-platform code needs no #if), and the Foundry Local models (downloaded on first use and run in-process on Windows, macOS (Apple silicon) and Linux). The client is Microsoft.Extensions.AI's IChatClient.</Description>
   </PropertyGroup>
 
 </Project>

@@ -2,7 +2,7 @@ using Microsoft.Graphics.Imaging;
 
 namespace Microsoft.AI.Local.Windows.Providers;
 
-/// <summary><see cref="ImageBuffer"/> helpers for Windows task provider packages.</summary>
+/// <summary><see cref="ImageBuffer"/> helpers for the task packages that implement Windows models.</summary>
 public static class WindowsImageBuffers
 {
     /// <summary>
