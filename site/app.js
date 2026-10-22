@@ -809,8 +809,6 @@
           t.experimental ? badge('Experimental API', 'experimental', `Suppress ${t.pragma} to use it`) : null),
         h('h1', null, `${t.icon} ${t.text}`),
         h('p', { class: 'lead' }, t.summary)),
-      h('h2', { class: 'section-title' }, 'Models'),
-      h('div', { class: 'layout' }, sidebar, h('div', { class: 'main-col' }, toolbar, resultsEl)),
       h('h2', { class: 'section-title' }, 'Use it in your app'),
       h('div', { class: 'detail-grid' },
         h('div', null,
@@ -833,7 +831,9 @@
           t.providerNotes ? [h('h3', null, 'Audio input'), h('ul', { class: 'req-list' },
             groups.filter(g => t.providerNotes[g]).map(g => h('li', null,
               h('strong', null, `${live.filter(m => m.provider === g).map(m => m.displayName).join(', ')}: `), t.providerNotes[g])))] : null),
-        h('div', null, h('h3', null, 'Code'), snippetTabs.length ? tabs(snippetTabs) : h('p', null, 'No models yet.'))));
+        h('div', null, h('h3', null, 'Code'), snippetTabs.length ? tabs(snippetTabs) : h('p', null, 'No models yet.'))),
+      h('h2', { class: 'section-title' }, 'Models'),
+      h('div', { class: 'layout' }, sidebar, h('div', { class: 'main-col' }, toolbar, resultsEl)));
     renderResults();
     keepSearchFocus(search, hadFocus);
   }
